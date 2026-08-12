@@ -21,8 +21,10 @@ from django.conf.urls.static import static
 from django.conf import settings
 
 
+from django.shortcuts import redirect
+
 urlpatterns = [
-    path('', views.home, name='home'),
+    path('', lambda request: redirect('super_admin'), name='home'),
     path('menu/<str:restaurant_id>/table<int:table_number>/', views.qr_menu_access, name='qr_menu_access'),
     path('menu/table<int:table_number>/', views.qr_menu_access, name='qr_menu_access_default'),
     path('login/', views.staff_login_view, name='staff_login'),
