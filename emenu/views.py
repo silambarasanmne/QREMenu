@@ -40,7 +40,6 @@ def staff_login_view(request):
 from table.models import Restaurant
 from django.db.models import Sum
 
-@login_required(login_url='/login/')
 def super_admin_view(request):
     restaurants = Restaurant.objects.all().order_by('-created_at')
     total_orders = SubmittedItem.objects.count()
