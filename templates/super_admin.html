@@ -1,0 +1,362 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en" class="h-full bg-slate-950">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Luxe Royale | Platform Super Admin Console</title>
+
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            amber: {
+              450: '#F59E0B',
+              550: '#D97706',
+            },
+            gold: '#F59E0B',
+          },
+          fontFamily: {
+            sans: ['Plus Jakarta Sans', 'Inter', 'sans-serif'],
+            serif: ['Playfair Display', 'Georgia', 'serif'],
+          }
+        }
+      }
+    }
+  </script>
+
+  <!-- Google Fonts & FontAwesome -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=Playfair+Display:ital,wght@0,600;0,700;1,600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+  <link rel="stylesheet" href="{% static 'css/tailwind-custom.css' %}">
+</head>
+<body class="min-h-full bg-slate-950 text-slate-100 flex flex-col justify-between selection:bg-amber-500 selection:text-slate-950">
+
+  <!-- Super Admin Header Bar -->
+  <header class="sticky top-0 z-40 bg-slate-900/95 backdrop-blur-xl border-b border-slate-800 shadow-xl px-4 sm:px-6 py-3.5">
+    <div class="max-w-7xl mx-auto flex items-center justify-between gap-4">
+      
+      <!-- Brand & Title -->
+      <div class="flex items-center space-x-3">
+        <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-amber-500 to-amber-300 text-slate-950 flex items-center justify-center font-bold text-xl shadow-md shadow-amber-500/20">
+          <i class="fa-solid fa-crown"></i>
+        </div>
+        <div>
+          <h1 class="font-serif font-bold text-lg text-white leading-none">SUPER ADMIN PLATFORM CONSOLE</h1>
+          <p class="text-[10px] text-amber-400 font-extrabold tracking-widest uppercase">Multi-Tenant Restaurant SaaS Operations</p>
+        </div>
+      </div>
+
+      <!-- Action Buttons -->
+      <div class="flex items-center space-x-3">
+        <button onclick="openOnboardModal()" class="px-4 py-2 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 text-slate-950 font-extrabold text-xs sm:text-sm shadow-md shadow-amber-500/20 flex items-center space-x-2 transition-all active:scale-95">
+          <i class="fa-solid fa-plus text-xs"></i>
+          <span>+ Onboard New Restaurant</span>
+        </button>
+
+        <a href="{% url 'logout_view' %}" class="w-9 h-9 rounded-xl bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border border-rose-500/30 flex items-center justify-center transition-colors">
+          <i class="fa-solid fa-right-from-bracket text-xs"></i>
+        </a>
+      </div>
+
+    </div>
+  </header>
+
+  <!-- Messages Alert -->
+  {% if messages %}
+  <div class="max-w-7xl mx-auto px-4 sm:px-6 pt-4">
+    {% for message in messages %}
+    <div class="glass-panel p-4 rounded-2xl border border-emerald-500/30 text-xs font-bold text-emerald-400 flex items-center space-x-2">
+      <i class="fa-solid fa-circle-check"></i>
+      <span>{{ message }}</span>
+    </div>
+    {% endfor %}
+  </div>
+  {% endif %}
+
+  <!-- Main Content Area -->
+  <main class="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 py-6 space-y-8">
+
+    <!-- Metric KPI Cards -->
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
+      
+      <div class="glass-panel rounded-3xl p-5 border border-slate-800 space-y-2">
+        <span class="text-xs font-bold text-slate-400 uppercase tracking-wider">Total Onboarded</span>
+        <div class="flex items-baseline space-x-2">
+          <h3 class="text-3xl font-extrabold text-white">{{ total_restaurants }}</h3>
+          <span class="text-xs text-amber-400 font-bold">Restaurants</span>
+        </div>
+        <p class="text-[11px] text-slate-500">Registered SaaS tenants</p>
+      </div>
+
+      <div class="glass-panel rounded-3xl p-5 border border-slate-800 space-y-2">
+        <span class="text-xs font-bold text-slate-400 uppercase tracking-wider">Active Services</span>
+        <div class="flex items-baseline space-x-2">
+          <h3 class="text-3xl font-extrabold text-emerald-400">{{ active_count }}</h3>
+          <span class="text-xs text-emerald-400 font-bold">Live Tenants</span>
+        </div>
+        <p class="text-[11px] text-slate-500">Active QR menu services</p>
+      </div>
+
+      <div class="glass-panel rounded-3xl p-5 border border-slate-800 space-y-2">
+        <span class="text-xs font-bold text-slate-400 uppercase tracking-wider">Total Platform Orders</span>
+        <div class="flex items-baseline space-x-2">
+          <h3 class="text-3xl font-extrabold text-white">{{ total_orders }}</h3>
+          <span class="text-xs text-indigo-400 font-bold">Tickets</span>
+        </div>
+        <p class="text-[11px] text-slate-500">Orders fulfilled across system</p>
+      </div>
+
+      <div class="glass-panel rounded-3xl p-5 border border-slate-800 space-y-2">
+        <span class="text-xs font-bold text-slate-400 uppercase tracking-wider">Gross System Revenue</span>
+        <div class="flex items-baseline space-x-2">
+          <h3 class="text-3xl font-extrabold text-amber-400">₹{{ total_revenue|floatformat:2 }}</h3>
+        </div>
+        <p class="text-[11px] text-slate-500">Total bill transactions</p>
+      </div>
+
+    </div>
+
+    <!-- Onboarded Restaurants Directory -->
+    <div class="space-y-4">
+      <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+        <div>
+          <h2 class="font-serif text-2xl font-bold text-white">Onboarded Restaurant Portfolio</h2>
+          <p class="text-xs text-slate-400 mt-0.5">Manage tenants, provision credentials, print QR codes, and control service activation.</p>
+        </div>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        {% for rest_item in restaurants_data %}
+        {% with rest=rest_item.obj %}
+        <div class="glass-panel rounded-3xl p-5 border border-slate-800 flex flex-col justify-between space-y-5 hover:border-amber-500/40 transition-all shadow-xl relative overflow-hidden">
+          
+          <!-- Header info -->
+          <div class="flex items-center justify-between border-b border-slate-800 pb-4">
+            <div class="flex items-center space-x-3">
+              <div class="w-12 h-12 rounded-2xl bg-amber-500/10 border border-amber-500/30 text-amber-400 font-extrabold text-lg flex items-center justify-center shadow-md">
+                {% if rest.logo %}
+                <img src="{{ rest.logo.url }}" alt="{{ rest.name }}" class="w-full h-full object-cover rounded-2xl">
+                {% else %}
+                <i class="fa-solid fa-hotel"></i>
+                {% endif %}
+              </div>
+              <div>
+                <h3 class="font-bold text-base text-white truncate max-w-[160px]">{{ rest.name }}</h3>
+                <span class="text-xs text-amber-400 font-mono font-bold">ID: {{ rest.restaurant_id }} ({{ rest.table_count }} Tables)</span>
+              </div>
+            </div>
+
+            {% if rest.is_active %}
+            <span class="px-2.5 py-1 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 text-[11px] font-extrabold flex items-center space-x-1">
+              <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+              <span>ACTIVE</span>
+            </span>
+            {% else %}
+            <span class="px-2.5 py-1 rounded-full bg-rose-500/20 text-rose-400 border border-rose-500/30 text-[11px] font-extrabold flex items-center space-x-1">
+              <span class="w-2 h-2 rounded-full bg-rose-400"></span>
+              <span>DISABLED</span>
+            </span>
+            {% endif %}
+          </div>
+
+          <!-- PROMINENT ONBOARDED QR CODE & DIRECT LINK BOX -->
+          <div class="bg-slate-900/90 rounded-2xl p-4 border border-amber-500/30 space-y-3 text-center">
+            <p class="text-[11px] font-extrabold text-amber-400 uppercase tracking-wider">Generated Customer QR Code (Table 1 Preview)</p>
+            
+            <div class="w-36 h-36 mx-auto bg-white p-2.5 rounded-2xl border-2 border-amber-500/40 shadow-lg flex items-center justify-center">
+              <img src="{{ rest_item.qr_img }}" alt="{{ rest.name }} QR Code" class="w-full h-full object-contain">
+            </div>
+
+            <div class="space-y-1">
+              <span class="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Generated Customer Access URL:</span>
+              <div class="flex items-center justify-between bg-slate-950 px-2.5 py-1.5 rounded-xl border border-slate-800">
+                <a href="{{ rest_item.qr_url }}" target="_blank" class="text-[11px] text-amber-300 font-mono truncate hover:underline">
+                  {{ rest_item.qr_url }}
+                </a>
+                <button onclick="navigator.clipboard.writeText('{{ rest_item.qr_url }}'); alert('Customer QR URL copied!');" class="text-[10px] text-slate-400 hover:text-white px-1.5 py-0.5 rounded bg-slate-800">
+                  <i class="fa-solid fa-copy"></i>
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Provisioned Credentials & Direct Portal Links -->
+          <div class="space-y-3 bg-slate-900/90 rounded-2xl p-3 border border-slate-800">
+            <p class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Provisioned Staff Accounts & Portals (Password: admin123 / kitchen123 / waiter123)</p>
+            
+            <div class="grid grid-cols-3 gap-1.5 text-[10px] font-mono">
+              <a href="{% url 'menu_management' %}" target="_blank" title="Open E-Menu Admin Portal" class="bg-slate-950 hover:bg-slate-800 p-2 rounded text-center border border-amber-500/30 transition-colors group">
+                <span class="text-slate-400 block font-sans text-[9px]">E-Menu Admin</span>
+                <span class="text-amber-400 font-bold group-hover:underline"><i class="fa-solid fa-pen-to-square text-[9px] mr-0.5"></i> {{ rest_item.admin_user }}</span>
+              </a>
+
+              <a href="{% url 'kitchen_home' %}" target="_blank" title="Open Kitchen KDS Portal" class="bg-slate-950 hover:bg-slate-800 p-2 rounded text-center border border-indigo-500/30 transition-colors group">
+                <span class="text-slate-400 block font-sans text-[9px]">Kitchen KDS</span>
+                <span class="text-indigo-400 font-bold group-hover:underline"><i class="fa-solid fa-utensils text-[9px] mr-0.5"></i> {{ rest_item.kitchen_user }}</span>
+              </a>
+
+              <a href="{% url 'counter_home' %}" target="_blank" title="Open Waiter Staff Portal" class="bg-slate-950 hover:bg-slate-800 p-2 rounded text-center border border-emerald-500/30 transition-colors group">
+                <span class="text-slate-400 block font-sans text-[9px]">Waiter Staff</span>
+                <span class="text-emerald-400 font-bold group-hover:underline"><i class="fa-solid fa-concierge-bell text-[9px] mr-0.5"></i> {{ rest_item.waiter_user }}</span>
+              </a>
+            </div>
+
+            <!-- Direct Portal Quick Links -->
+            <div class="grid grid-cols-2 gap-2 pt-1">
+              <a href="{% url 'kitchen_home' %}" target="_blank" class="py-1.5 px-2 bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 rounded-xl font-bold text-[11px] flex items-center justify-center space-x-1 transition-colors">
+                <i class="fa-solid fa-fire text-[10px]"></i>
+                <span>Kitchen Screen</span>
+              </a>
+              <a href="{% url 'counter_home' %}" target="_blank" class="py-1.5 px-2 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 rounded-xl font-bold text-[11px] flex items-center justify-center space-x-1 transition-colors">
+                <i class="fa-solid fa-user-tie text-[10px]"></i>
+                <span>Waiter Screen</span>
+              </a>
+            </div>
+
+            <!-- ONE-CLICK SHARE PACKAGE BUTTON FOR RESTAURANT OWNER -->
+            <button onclick="shareOwnerPackage('{{ rest.name|escapejs }}', '{{ rest.restaurant_id }}', '{{ rest_item.qr_url }}', '{{ rest_item.admin_user }}', '{{ rest_item.kitchen_user }}', '{{ rest_item.waiter_user }}')"
+              class="w-full py-2.5 px-3 bg-slate-950 hover:bg-slate-800 text-amber-400 border border-amber-500/50 rounded-xl font-bold text-xs flex items-center justify-center space-x-2 transition-all shadow-md">
+              <i class="fa-solid fa-share-nodes text-xs"></i>
+              <span>📋 COPY SHAREABLE OWNER PACKAGE (ALL LINKS & LOGINS)</span>
+            </button>
+          </div>
+
+          <!-- Actions Grid -->
+          <div class="space-y-2 pt-2 border-t border-slate-800">
+            <a href="{% url 'restaurant_qr_sheet' rest.restaurant_id %}" target="_blank"
+              class="w-full py-2.5 px-3 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 text-slate-950 rounded-xl font-extrabold text-xs flex items-center justify-center space-x-2 shadow-md shadow-amber-500/20 transition-all">
+              <i class="fa-solid fa-qrcode"></i>
+              <span>PRINT ALL TABLE QR CARDS (1 to {{ rest.table_count }})</span>
+            </a>
+
+            <div class="flex items-center justify-between gap-2 pt-1">
+              <a href="{% url 'toggle_restaurant_active' rest.restaurant_id %}"
+                class="flex-1 py-2 rounded-xl text-xs font-extrabold text-center transition-all border
+                {% if rest.is_active %}bg-rose-500/10 text-rose-400 border-rose-500/30 hover:bg-rose-500/20{% else %}bg-emerald-500/10 text-emerald-400 border-emerald-500/30 hover:bg-emerald-500/20{% endif %}">
+                {% if rest.is_active %}Disable Service{% else %}Activate Service{% endif %}
+              </a>
+
+              <a href="{% url 'delete_restaurant' rest.restaurant_id %}" onclick="return confirm('Delete restaurant {{ rest.name|escapejs }}?')"
+                class="w-9 h-9 rounded-xl bg-slate-800 hover:bg-rose-500/20 text-slate-400 hover:text-rose-400 border border-slate-700 flex items-center justify-center transition-colors">
+                <i class="fa-solid fa-trash-can text-xs"></i>
+              </a>
+            </div>
+          </div>
+
+        </div>
+        {% endwith %}
+        {% endfor %}
+      </div>
+    </div>
+
+  </main>
+
+  <!-- 60-Second Onboarding Wizard Modal -->
+  <div id="onboardModal" class="fixed inset-0 bg-slate-950/85 backdrop-blur-md z-50 flex items-center justify-center p-4 hidden">
+    <div class="glass-modal w-full max-w-lg rounded-3xl p-6 sm:p-8 border border-slate-800 space-y-6 shadow-2xl relative overflow-hidden">
+      
+      <div class="flex items-center justify-between border-b border-slate-800 pb-4">
+        <div class="flex items-center space-x-3">
+          <div class="w-10 h-10 rounded-2xl bg-amber-500/10 border border-amber-500/30 text-amber-400 flex items-center justify-center font-bold text-lg">
+            <i class="fa-solid fa-rocket"></i>
+          </div>
+          <div>
+            <h3 class="font-serif font-bold text-xl text-white">Onboard New Restaurant</h3>
+            <p class="text-xs text-slate-400">Creates tenant, staff accounts & starter E-Menu</p>
+          </div>
+        </div>
+        <button onclick="closeOnboardModal()" class="w-8 h-8 rounded-xl bg-slate-800 text-slate-400 hover:text-white flex items-center justify-center">
+          <i class="fa-solid fa-xmark"></i>
+        </button>
+      </div>
+
+      <form action="{% url 'onboard_restaurant' %}" method="POST" enctype="multipart/form-data" class="space-y-4">
+        {% csrf_token %}
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div>
+            <label class="text-xs font-bold text-slate-300">Restaurant Name</label>
+            <input type="text" name="name" placeholder="e.g. Grand Palace Resort" required class="w-full mt-1 px-3 py-2.5 bg-slate-900 border border-slate-700 rounded-xl text-xs text-white focus:outline-none focus:border-amber-500">
+          </div>
+          <div>
+            <label class="text-xs font-bold text-slate-300">Restaurant ID (Code)</label>
+            <input type="text" name="restaurant_id" placeholder="e.g. R003 (Auto if blank)" class="w-full mt-1 px-3 py-2.5 bg-slate-900 border border-slate-700 rounded-xl text-xs text-white uppercase focus:outline-none focus:border-amber-500">
+          </div>
+        </div>
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div>
+            <label class="text-xs font-bold text-slate-300">Contact Phone</label>
+            <input type="text" name="phone" placeholder="+91 9876543210" class="w-full mt-1 px-3 py-2.5 bg-slate-900 border border-slate-700 rounded-xl text-xs text-white focus:outline-none focus:border-amber-500">
+          </div>
+          <div>
+            <label class="text-xs font-bold text-slate-300">Total Tables Count</label>
+            <input type="number" name="table_count" value="10" min="1" max="100" required class="w-full mt-1 px-3 py-2.5 bg-slate-900 border border-slate-700 rounded-xl text-xs text-white focus:outline-none focus:border-amber-500">
+          </div>
+        </div>
+
+        <div>
+          <label class="text-xs font-bold text-slate-300">Address / Location</label>
+          <textarea name="address" rows="2" placeholder="Restaurant full address..." class="w-full mt-1 px-3 py-2.5 bg-slate-900 border border-slate-700 rounded-xl text-xs text-white focus:outline-none focus:border-amber-500"></textarea>
+        </div>
+
+        <div>
+          <label class="text-xs font-bold text-slate-300">Restaurant Logo</label>
+          <input type="file" name="logo" accept="image/*" class="w-full mt-1 text-xs text-slate-400 file:mr-3 file:py-2 file:px-3 file:rounded-xl file:border-0 file:text-xs file:font-bold file:bg-amber-500 file:text-slate-950">
+        </div>
+
+        <button type="submit" class="w-full py-3.5 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 text-slate-950 font-extrabold text-sm rounded-xl shadow-lg shadow-amber-500/20 active:scale-98 transition-all">
+          🚀 PROVISION & ACTIVATE RESTAURANT
+        </button>
+      </form>
+    </div>
+  </div>
+
+  <script>
+    function openOnboardModal() {
+      document.getElementById('onboardModal').classList.remove('hidden');
+    }
+    function closeOnboardModal() {
+      document.getElementById('onboardModal').classList.add('hidden');
+    }
+
+    function shareOwnerPackage(name, restId, qrUrl, adminUser, kitchenUser, waiterUser) {
+      const loginUrl = window.location.origin + '/login/';
+      const text = `---------------------------------------\n` +
+        `🏨 ${name.toUpperCase()} (${restId}) - E-MENU ACCESS PACKAGE\n` +
+        `---------------------------------------\n\n` +
+        `1️⃣ CUSTOMER QR MENU LINK:\n` +
+        `   👉 ${qrUrl}\n\n` +
+        `2️⃣ RESTAURANT ADMIN (E-Menu Manager):\n` +
+        `   👉 ${loginUrl}\n` +
+        `   • Username: ${adminUser}\n` +
+        `   • Password: admin123\n\n` +
+        `3️⃣ KITCHEN DISPLAY SCREEN (KDS):\n` +
+        `   👉 ${loginUrl}\n` +
+        `   • Username: ${kitchenUser}\n` +
+        `   • Password: kitchen123\n\n` +
+        `4️⃣ WAITER / FLOOR STAFF SCREEN:\n` +
+        `   👉 ${loginUrl}\n` +
+        `   • Username: ${waiterUser}\n` +
+        `   • Password: waiter123\n` +
+        `---------------------------------------`;
+      
+      if (navigator.clipboard) {
+        navigator.clipboard.writeText(text).then(() => {
+          alert(`Access package for "${name}" copied to clipboard! You can now paste and send it directly to the restaurant owner via WhatsApp or Email.`);
+        }).catch(() => {
+          prompt(`Copy the access package for "${name}":`, text);
+        });
+      } else {
+        prompt(`Copy the access package for "${name}":`, text);
+      }
+    }
+  </script>
+</body>
+</html>

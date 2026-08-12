@@ -1,0 +1,612 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en" class="h-full bg-slate-950">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Luxe Royale | Customer Digital Menu</title>
+  <meta name="description" content="Explore our exquisite culinary menu, place orders directly from your table, and track live order status.">
+
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            amber: {
+              450: '#F59E0B',
+              550: '#D97706',
+            },
+            gold: '#F59E0B',
+          },
+          fontFamily: {
+            sans: ['Plus Jakarta Sans', 'Inter', 'sans-serif'],
+            serif: ['Playfair Display', 'Georgia', 'serif'],
+          }
+        }
+      }
+    }
+  </script>
+
+  <!-- Google Fonts & FontAwesome -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=Playfair+Display:ital,wght@0,600;0,700;1,600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+  <link rel="stylesheet" href="{% static 'css/tailwind-custom.css' %}">
+</head>
+<body class="min-h-full bg-slate-950 text-slate-100 pb-28 lg:pb-12 selection:bg-amber-500 selection:text-slate-950">
+
+  <!-- Table Number Selection Modal Overlay -->
+  <div id="modalOverlay" class="fixed inset-0 bg-slate-950/85 backdrop-blur-md z-50 flex items-center justify-center p-4 transition-all duration-300 hidden">
+    <div class="glass-modal w-full max-w-md rounded-3xl p-6 sm:p-8 text-center shadow-2xl border border-amber-500/20 space-y-6 relative overflow-hidden">
+      
+      <div class="absolute -top-12 -right-12 w-32 h-32 bg-amber-500/10 rounded-full blur-2xl pointer-events-none"></div>
+
+      <div class="w-16 h-16 rounded-2xl bg-amber-500/10 border border-amber-500/20 text-amber-400 mx-auto flex items-center justify-center text-3xl shadow-inner">
+        <i class="fa-solid fa-utensils"></i>
+      </div>
+
+      <div class="space-y-2">
+        <h2 class="font-serif text-2xl sm:text-3xl font-bold text-white">Welcome to Luxe Royale</h2>
+        <p class="text-sm text-slate-400">Please enter your assigned table number to view menu and start ordering.</p>
+      </div>
+
+      <form id="tableForm" onsubmit="event.preventDefault(); entertable_number();" class="space-y-4">
+        <div>
+          <label for="table_number" class="sr-only">Table Number</label>
+          <div class="relative">
+            <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-slate-400">
+              <i class="fa-solid fa-chair text-amber-400"></i>
+            </div>
+            <input type="number" id="table_number" min="1" max="50" placeholder="Enter Table No. (e.g. 5)" required
+              class="w-full pl-11 pr-4 py-3.5 bg-slate-900/90 border border-slate-700/80 rounded-xl text-center text-lg font-bold text-white placeholder-slate-500 focus:outline-none focus:border-amber-500 focus:ring-2 focus:ring-amber-500/20 transition-all">
+          </div>
+          <p id="errorMessage" class="text-xs text-rose-400 mt-2 hidden"></p>
+        </div>
+
+        <button type="submit"
+          class="w-full py-4 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-slate-950 font-bold text-base rounded-xl shadow-lg shadow-amber-500/25 transition-all duration-200 active:scale-[0.98] flex items-center justify-center space-x-2">
+          <span>Confirm Table & Browse Menu</span>
+          <i class="fa-solid fa-arrow-right text-xs"></i>
+        </button>
+      </form>
+      
+      <p class="text-xs text-slate-500">Need help? Ask our floor service captain for assistance.</p>
+    </div>
+  </div>
+
+  <!-- Sticky Top Header -->
+  <header class="sticky top-0 z-40 bg-slate-900/90 backdrop-blur-xl border-b border-slate-800/80 shadow-md">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3.5">
+      <div class="flex items-center justify-between gap-3">
+        
+        <!-- Brand / Hotel Logo -->
+        <a href="{% url 'home' %}" class="flex items-center space-x-3 group">
+          <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-amber-400 to-amber-600 text-slate-950 flex items-center justify-center font-bold text-lg shadow-md shadow-amber-500/20 group-hover:scale-105 transition-transform">
+            <i class="fa-solid fa-utensils"></i>
+          </div>
+          <div class="hidden sm:block">
+            <h1 class="font-serif font-bold text-lg text-white tracking-tight leading-none">LUXE ROYALE</h1>
+            <p class="text-[10px] text-amber-400 font-semibold tracking-wider uppercase">Table QR Menu</p>
+          </div>
+        </a>
+
+        <!-- Table Number Pill Badge & Active Cart button -->
+        <div class="flex items-center space-x-2 sm:space-x-3">
+          
+          <!-- Table Badge -->
+          <button onclick="changeTableNumberPrompt()" class="inline-flex items-center px-3 py-1.5 rounded-xl bg-slate-800/80 hover:bg-slate-700/80 border border-amber-500/30 text-amber-400 text-xs sm:text-sm font-semibold transition-all shadow-sm">
+            <i class="fa-solid fa-chair mr-2 text-amber-400"></i>
+            <span id="table_numberDisplay">Table: --</span>
+            <i class="fa-solid fa-pen-to-square ml-2 text-[10px] opacity-70"></i>
+          </button>
+
+          <!-- Order Status Quick Link -->
+          <a href="{% url 'order' %}" class="relative inline-flex items-center px-3.5 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs sm:text-sm shadow-md shadow-amber-500/20 transition-all active:scale-95">
+            <i class="fa-solid fa-receipt mr-1.5 sm:mr-2"></i>
+            <span>My Orders</span>
+            <span id="cartCountBadge" class="ml-1.5 px-1.5 py-0.5 rounded-full bg-slate-950 text-amber-400 text-[11px] font-extrabold hidden">0</span>
+          </a>
+
+        </div>
+
+      </div>
+
+      <!-- Live Search Bar -->
+      <div class="mt-3">
+        <div class="relative">
+          <div class="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
+            <i class="fa-solid fa-magnifying-glass text-slate-400"></i>
+          </div>
+          <input type="text" id="searchInput" onkeyup="filterFoodItems()" placeholder="Search delicious starters, biryanis, drinks..."
+            class="w-full pl-10 pr-10 py-2.5 bg-slate-950/80 border border-slate-800 rounded-xl text-sm text-slate-100 placeholder-slate-500 focus:outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500 transition-all">
+          <button id="clearSearchBtn" onclick="clearSearch()" class="absolute inset-y-0 right-0 pr-3.5 flex items-center text-slate-500 hover:text-slate-300 hidden">
+            <i class="fa-solid fa-circle-xmark text-sm"></i>
+          </button>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Category Filter Scroll Tabs -->
+    <div class="border-t border-slate-800/60 bg-slate-900/60">
+      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div class="flex space-x-2 overflow-x-auto no-scrollbar py-2.5" id="categoryTabs">
+          
+          <button onclick="selectCategory('all')" data-cat="all"
+            class="cat-tab px-4 py-1.5 rounded-xl text-xs sm:text-sm font-semibold whitespace-nowrap transition-all duration-200 bg-amber-500 text-slate-950 shadow-sm">
+            <i class="fa-solid fa-border-all mr-1.5"></i> All Dishes
+          </button>
+
+          {% for cat in categories %}
+          <button onclick="selectCategory('{{ cat.id }}')" data-cat="{{ cat.id }}"
+            class="cat-tab px-4 py-1.5 rounded-xl text-xs sm:text-sm font-semibold whitespace-nowrap transition-all duration-200 bg-slate-800/80 hover:bg-slate-700 text-slate-300 hover:text-white border border-slate-700/50">
+            {{ cat.name }}
+          </button>
+          {% endfor %}
+
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main Container -->
+  <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-6">
+    <div class="lg:grid lg:grid-cols-12 lg:gap-8">
+      
+      <!-- Food Menu Grid (Col 1-8 or 12) -->
+      <div class="lg:col-span-8">
+        
+        <!-- Category Banner Header -->
+        <div class="flex items-center justify-between mb-4">
+          <div>
+            <h2 id="currentCategoryTitle" class="font-serif text-xl sm:text-2xl font-bold text-white">
+              {% if selected_category %}{{ selected_category.name }}{% else %}All Signature Dishes{% endif %}
+            </h2>
+            <p id="itemCountText" class="text-xs text-slate-400 mt-0.5">Showing {{ food_items|length }} delicious items</p>
+          </div>
+        </div>
+
+        <!-- Skeleton Loading State (Hidden by default) -->
+        <div id="skeletonGrid" class="grid grid-cols-1 sm:grid-cols-2 gap-4 hidden">
+          {% for i in "1234" %}
+          <div class="glass-panel rounded-2xl p-4 space-y-3 border border-slate-800">
+            <div class="h-40 rounded-xl skeleton-shimmer w-full"></div>
+            <div class="h-4 skeleton-shimmer w-3/4 rounded"></div>
+            <div class="h-3 skeleton-shimmer w-1/2 rounded"></div>
+            <div class="flex justify-between items-center pt-2">
+              <div class="h-5 skeleton-shimmer w-16 rounded"></div>
+              <div class="h-9 skeleton-shimmer w-24 rounded-xl"></div>
+            </div>
+          </div>
+          {% endfor %}
+        </div>
+
+        <!-- Empty State Search Result -->
+        <div id="emptyState" class="hidden glass-panel rounded-3xl p-12 text-center my-8 max-w-md mx-auto space-y-4">
+          <div class="w-16 h-16 rounded-full bg-slate-800 text-amber-400 flex items-center justify-center text-3xl mx-auto">
+            <i class="fa-solid fa-utensils"></i>
+          </div>
+          <h3 class="text-lg font-bold text-white">No dishes found</h3>
+          <p class="text-xs text-slate-400">We couldn't find any menu item matching your search keyword. Try clearing filters.</p>
+          <button onclick="clearSearch()" class="px-4 py-2 bg-amber-500 text-slate-950 text-xs font-bold rounded-xl hover:bg-amber-400">
+            Clear Search
+          </button>
+        </div>
+
+        <!-- Food Items Grid -->
+        <div id="foodGrid" class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
+          
+          {% for item in food_items %}
+          <div class="food-card group glass-panel rounded-2xl overflow-hidden border border-slate-800 hover:border-amber-500/40 hover:shadow-xl transition-all duration-300 flex flex-col justify-between"
+               data-id="{{ item.id }}"
+               data-name="{{ item.name|lower }}"
+               data-category="{{ item.category.id }}"
+               data-price="{{ item.price }}">
+            
+            <!-- Food Image Section -->
+            <div class="relative h-44 sm:h-48 overflow-hidden bg-slate-900">
+              {% if item.image %}
+              <img src="{{ item.image.url }}" alt="{{ item.name }}"
+                   class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                   onerror="this.onerror=null; this.src='https://images.unsplash.com/photo-1546069901-ba9599a7e63c?auto=format&fit=crop&w=600&q=80';">
+              {% else %}
+              <img src="https://images.unsplash.com/photo-1546069901-ba9599a7e63c?auto=format&fit=crop&w=600&q=80" alt="{{ item.name }}"
+                   class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500">
+              {% endif %}
+              
+              <div class="absolute inset-0 bg-gradient-to-t from-slate-950/80 via-transparent to-transparent"></div>
+
+              <!-- Veg / Non-Veg Badge -->
+              <div class="absolute top-3 left-3 flex items-center space-x-1.5 px-2.5 py-1 rounded-lg bg-slate-950/80 backdrop-blur-md border border-slate-700/60 text-[11px] font-bold">
+                <span class="w-2.5 h-2.5 rounded-full bg-emerald-500"></span>
+                <span class="text-slate-200">Fresh</span>
+              </div>
+
+              <!-- Price Tag -->
+              <div class="absolute bottom-3 left-3 text-lg font-extrabold text-amber-400 drop-shadow-md">
+                ₹{{ item.price }}
+              </div>
+            </div>
+
+            <!-- Food Info & Action Button -->
+            <div class="p-4 flex-1 flex flex-col justify-between space-y-3">
+              <div>
+                <h3 class="font-bold text-base text-white group-hover:text-amber-400 transition-colors line-clamp-1">
+                  {{ item.name }}
+                </h3>
+                <p class="text-xs text-slate-400 mt-1 line-clamp-2">
+                  {{ item.description|default:"Prepared fresh with authentic spices and finest ingredients." }}
+                </p>
+              </div>
+
+              <!-- Add to Cart / Quantity Adjuster Control -->
+              <div class="pt-2 border-t border-slate-800/80 flex items-center justify-between">
+                {% if item.is_available %}
+                <span class="text-[11px] font-medium text-emerald-400">Available</span>
+                
+                <div class="cart-control-wrap" data-item-id="{{ item.id }}">
+                  <!-- Default Add Button -->
+                  <button onclick="addToCart('{{ item.id }}', '{{ item.name|escapejs }}', '{{ item.price }}', '{{ item.image.url|default:'' }}')"
+                          class="add-btn touch-active inline-flex items-center px-4 py-2 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-slate-950 font-bold text-xs rounded-xl shadow-md shadow-amber-500/20 transition-all">
+                    <i class="fa-solid fa-plus mr-1.5 text-xs"></i> Add
+                  </button>
+                {% else %}
+                <span class="text-[11px] font-bold text-rose-400 uppercase tracking-wider">Out of Stock</span>
+                <button disabled class="px-3 py-1.5 bg-slate-800 text-slate-500 cursor-not-allowed font-bold text-xs rounded-xl">
+                  Unavailable
+                </button>
+                {% endif %}
+
+                  <!-- Interactive Quantity Selector (Shown when quantity > 0) -->
+                  <div class="qty-btn-group flex items-center space-x-1.5 bg-slate-900 border border-amber-500/40 rounded-xl p-1 hidden">
+                    <button onclick="updateCartQty('{{ item.id }}', -1)" class="w-7 h-7 rounded-lg bg-slate-800 hover:bg-slate-700 text-amber-400 flex items-center justify-center text-xs font-bold transition-colors">
+                      <i class="fa-solid fa-minus"></i>
+                    </button>
+                    <span class="qty-count text-xs font-bold text-white px-2">1</span>
+                    <button onclick="updateCartQty('{{ item.id }}', 1)" class="w-7 h-7 rounded-lg bg-amber-500 hover:bg-amber-400 text-slate-950 flex items-center justify-center text-xs font-bold transition-colors">
+                      <i class="fa-solid fa-plus"></i>
+                    </button>
+                  </div>
+                </div>
+
+              </div>
+            </div>
+
+          </div>
+          {% endfor %}
+
+        </div>
+
+      </div>
+
+      <!-- Desktop Sticky Cart Panel (Visible on lg: screens) -->
+      <div class="hidden lg:block lg:col-span-4">
+        <div class="sticky top-32 glass-panel rounded-3xl p-6 border border-slate-800 space-y-5">
+          <div class="flex items-center justify-between border-b border-slate-800 pb-4">
+            <div class="flex items-center space-x-2">
+              <i class="fa-solid fa-basket-shopping text-amber-400 text-lg"></i>
+              <h3 class="font-bold text-lg text-white">Your Order Basket</h3>
+            </div>
+            <span id="desktopCartBadge" class="px-2.5 py-0.5 rounded-full bg-amber-500/10 text-amber-400 border border-amber-500/30 text-xs font-bold">0 Items</span>
+          </div>
+
+          <!-- Items List Container -->
+          <div id="desktopCartItems" class="space-y-3 max-h-80 overflow-y-auto pr-1 no-scrollbar">
+            <div class="text-center py-8 text-slate-500 space-y-2">
+              <i class="fa-solid fa-utensils text-2xl text-slate-600"></i>
+              <p class="text-xs">Your basket is empty. Select delicious items to begin your meal.</p>
+            </div>
+          </div>
+
+          <!-- Summary Breakdown -->
+          <div class="border-t border-slate-800 pt-4 space-y-2">
+            <div class="flex justify-between text-xs text-slate-400">
+              <span>Item Subtotal</span>
+              <span id="desktopSubtotal">₹0.00</span>
+            </div>
+            <div class="flex justify-between text-xs text-slate-400">
+              <span>Est. Tax (5% GST)</span>
+              <span id="desktopTax">₹0.00</span>
+            </div>
+            <div class="flex justify-between text-base font-bold text-white pt-2 border-t border-slate-800/80">
+              <span>Total Amount</span>
+              <span id="desktopTotal" class="text-amber-400">₹0.00</span>
+            </div>
+          </div>
+
+          <a href="{% url 'order' %}" class="w-full py-3.5 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-slate-950 font-bold text-sm rounded-xl shadow-lg shadow-amber-500/25 flex items-center justify-center space-x-2 transition-all active:scale-[0.98]">
+            <span>Review & Place Order</span>
+            <i class="fa-solid fa-arrow-right text-xs"></i>
+          </a>
+        </div>
+      </div>
+
+    </div>
+  </main>
+
+  <!-- Mobile Sticky Bottom Cart Bar -->
+  <div id="mobileCartBar" class="fixed bottom-0 left-0 right-0 z-40 bg-slate-900/95 backdrop-blur-xl border-t border-amber-500/30 p-3 sm:p-4 shadow-2xl lg:hidden transform transition-transform duration-300">
+    <div class="max-w-md mx-auto flex items-center justify-between">
+      <div class="flex items-center space-x-3">
+        <div class="w-11 h-11 rounded-2xl bg-amber-500 text-slate-950 flex items-center justify-center font-bold text-lg shadow-md shadow-amber-500/30">
+          <i class="fa-solid fa-basket-shopping"></i>
+        </div>
+        <div>
+          <div class="flex items-center space-x-2">
+            <span id="mobileItemCount" class="text-xs font-bold text-amber-400 uppercase tracking-wider">0 Items</span>
+          </div>
+          <p id="mobileSubtotal" class="text-base font-extrabold text-white">₹0.00</p>
+        </div>
+      </div>
+
+      <a href="{% url 'order' %}" class="px-5 py-3 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 text-slate-950 font-extrabold text-xs sm:text-sm rounded-xl shadow-lg shadow-amber-500/30 flex items-center space-x-2 active:scale-95 transition-all">
+        <span>VIEW CART</span>
+        <i class="fa-solid fa-chevron-right text-xs"></i>
+      </a>
+    </div>
+  </div>
+
+  <!-- Toast Notification System -->
+  <div id="toastContainer" class="fixed top-20 right-4 z-50 space-y-2 max-w-xs pointer-events-none"></div>
+
+  <!-- Client-side Logic Script -->
+  <script>
+    // Cart local storage state
+    let localCart = JSON.parse(localStorage.getItem('hotel_cart') || '{}');
+
+    window.onload = function() {
+      initTableSession();
+      renderCartUI();
+    };
+
+    function initTableSession() {
+      let table_number = localStorage.getItem('table_number');
+      if (!table_number) {
+        document.getElementById("modalOverlay").classList.remove("hidden");
+      } else {
+        document.getElementById('table_numberDisplay').innerText = "Table: " + table_number;
+      }
+    }
+
+    function changeTableNumberPrompt() {
+      document.getElementById("modalOverlay").classList.remove("hidden");
+    }
+
+    function entertable_number() {
+      let inputVal = document.getElementById('table_number').value.trim();
+      let errorEl = document.getElementById('errorMessage');
+
+      if (inputVal && Number.isInteger(+inputVal) && +inputVal >= 1 && +inputVal <= 50) {
+        localStorage.setItem('table_number', inputVal);
+        
+        fetch("{% url 'set_table_number' %}", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "X-CSRFToken": getCookie('csrftoken')
+          },
+          body: JSON.stringify({ table_number: inputVal })
+        }).then(res => {
+          document.getElementById("modalOverlay").classList.add("hidden");
+          document.getElementById('table_numberDisplay').innerText = "Table: " + inputVal;
+          showToast("Table #" + inputVal + " activated!", "success");
+        }).catch(err => {
+          document.getElementById("modalOverlay").classList.add("hidden");
+          document.getElementById('table_numberDisplay').innerText = "Table: " + inputVal;
+        });
+
+      } else {
+        errorEl.innerText = "Please enter a valid table number between 1 and 50.";
+        errorEl.classList.remove("hidden");
+      }
+    }
+
+    function addToCart(id, name, price, imageUrl) {
+      let tableNum = localStorage.getItem('table_number') || '1';
+      if (!localCart[id]) {
+        localCart[id] = { id: id, name: name, price: parseFloat(price), qty: 1, image: imageUrl };
+      } else {
+        localCart[id].qty += 1;
+      }
+      saveCartState();
+      
+      // Submit to backend NotSubmittedItem
+      let formData = new FormData();
+      formData.append('item_id', id);
+      formData.append('name', name);
+      formData.append('price', price);
+      formData.append('quantity', 1);
+      formData.append('image_url', imageUrl);
+      formData.append('table_number', tableNum);
+
+      fetch("{% url 'add_not_submitted_item' %}", {
+        method: "POST",
+        headers: { "X-CSRFToken": getCookie('csrftoken') },
+        body: formData
+      }).then(r => r.json()).then(data => {
+        showToast("Added " + name + " to cart", "info");
+      });
+    }
+
+    function updateCartQty(id, delta) {
+      if (localCart[id]) {
+        localCart[id].qty += delta;
+        if (localCart[id].qty <= 0) {
+          delete localCart[id];
+        }
+        saveCartState();
+      }
+    }
+
+    function saveCartState() {
+      localStorage.setItem('hotel_cart', JSON.stringify(localCart));
+      renderCartUI();
+    }
+
+    function renderCartUI() {
+      let totalQty = 0;
+      let subtotal = 0;
+
+      // Update item card control buttons
+      document.querySelectorAll('.cart-control-wrap').forEach(wrap => {
+        let itemId = wrap.getAttribute('data-item-id');
+        let addBtn = wrap.querySelector('.add-btn');
+        let qtyGroup = wrap.querySelector('.qty-btn-group');
+        let qtyCount = wrap.querySelector('.qty-count');
+
+        if (localCart[itemId] && localCart[itemId].qty > 0) {
+          addBtn.classList.add('hidden');
+          qtyGroup.classList.remove('hidden');
+          qtyCount.innerText = localCart[itemId].qty;
+        } else {
+          addBtn.classList.remove('hidden');
+          qtyGroup.classList.add('hidden');
+        }
+      });
+
+      // Calculate totals
+      let desktopItemsContainer = document.getElementById('desktopCartItems');
+      let desktopHtml = '';
+
+      Object.values(localCart).forEach(item => {
+        totalQty += item.qty;
+        let itemTotal = item.price * item.qty;
+        subtotal += itemTotal;
+
+        desktopHtml += `
+          <div class="flex items-center justify-between p-2.5 bg-slate-900/80 rounded-xl border border-slate-800 text-xs">
+            <div class="truncate max-w-[140px]">
+              <p class="font-bold text-white truncate">\${item.name}</p>
+              <p class="text-slate-400">₹\${item.price} × \${item.qty}</p>
+            </div>
+            <div class="flex items-center space-x-2">
+              <span class="font-bold text-amber-400">₹\${itemTotal.toFixed(2)}</span>
+              <button onclick="updateCartQty('\${item.id}', -1)" class="text-slate-500 hover:text-rose-400">
+                <i class="fa-solid fa-circle-minus text-sm"></i>
+              </button>
+            </div>
+          </div>
+        `;
+      });
+
+      if (totalQty === 0) {
+        desktopItemsContainer.innerHTML = `
+          <div class="text-center py-8 text-slate-500 space-y-2">
+            <i class="fa-solid fa-utensils text-2xl text-slate-600"></i>
+            <p class="text-xs">Your basket is empty. Select delicious items to begin your meal.</p>
+          </div>
+        `;
+      } else {
+        desktopItemsContainer.innerHTML = desktopHtml;
+      }
+
+      let tax = subtotal * 0.05;
+      let grandTotal = subtotal + tax;
+
+      // Update DOM Badges & Totals
+      document.getElementById('cartCountBadge').innerText = totalQty;
+      if (totalQty > 0) {
+        document.getElementById('cartCountBadge').classList.remove('hidden');
+      } else {
+        document.getElementById('cartCountBadge').classList.add('hidden');
+      }
+
+      document.getElementById('desktopCartBadge').innerText = totalQty + " Items";
+      document.getElementById('desktopSubtotal').innerText = "₹" + subtotal.toFixed(2);
+      document.getElementById('desktopTax').innerText = "₹" + tax.toFixed(2);
+      document.getElementById('desktopTotal').innerText = "₹" + grandTotal.toFixed(2);
+
+      document.getElementById('mobileItemCount').innerText = totalQty + " Items";
+      document.getElementById('mobileSubtotal').innerText = "₹" + subtotal.toFixed(2);
+    }
+
+    function selectCategory(catId) {
+      document.querySelectorAll('.cat-tab').forEach(tab => {
+        if (tab.getAttribute('data-cat') === catId) {
+          tab.className = "cat-tab px-4 py-1.5 rounded-xl text-xs sm:text-sm font-semibold whitespace-nowrap transition-all duration-200 bg-amber-500 text-slate-950 shadow-sm";
+        } else {
+          tab.className = "cat-tab px-4 py-1.5 rounded-xl text-xs sm:text-sm font-semibold whitespace-nowrap transition-all duration-200 bg-slate-800/80 hover:bg-slate-700 text-slate-300 hover:text-white border border-slate-700/50";
+        }
+      });
+
+      let items = document.querySelectorAll('.food-card');
+      let visibleCount = 0;
+      items.forEach(card => {
+        let cardCat = card.getAttribute('data-category');
+        if (catId === 'all' || cardCat === catId) {
+          card.classList.remove('hidden');
+          visibleCount++;
+        } else {
+          card.classList.add('hidden');
+        }
+      });
+
+      document.getElementById('itemCountText').innerText = "Showing " + visibleCount + " items";
+    }
+
+    function filterFoodItems() {
+      let query = document.getElementById('searchInput').value.toLowerCase().trim();
+      let clearBtn = document.getElementById('clearSearchBtn');
+      let items = document.querySelectorAll('.food-card');
+      let visibleCount = 0;
+
+      if (query.length > 0) {
+        clearBtn.classList.remove('hidden');
+      } else {
+        clearBtn.classList.add('hidden');
+      }
+
+      items.forEach(card => {
+        let name = card.getAttribute('data-name');
+        if (name.includes(query)) {
+          card.classList.remove('hidden');
+          visibleCount++;
+        } else {
+          card.classList.add('hidden');
+        }
+      });
+
+      let emptyState = document.getElementById('emptyState');
+      if (visibleCount === 0) {
+        emptyState.classList.remove('hidden');
+      } else {
+        emptyState.classList.add('hidden');
+      }
+
+      document.getElementById('itemCountText').innerText = "Showing " + visibleCount + " items";
+    }
+
+    function clearSearch() {
+      document.getElementById('searchInput').value = '';
+      filterFoodItems();
+    }
+
+    function showToast(message, type = 'info') {
+      let container = document.getElementById('toastContainer');
+      let toast = document.createElement('div');
+      toast.className = "glass-panel px-4 py-3 rounded-2xl shadow-xl border border-amber-500/30 text-xs font-bold text-white flex items-center space-x-2 animate-bounce pointer-events-auto";
+      toast.innerHTML = `<i class="fa-solid fa-circle-check text-amber-400"></i> <span>\${message}</span>`;
+      container.appendChild(toast);
+      setTimeout(() => { toast.remove(); }, 3000);
+    }
+
+    function getCookie(name) {
+      let cookieValue = null;
+      if (document.cookie && document.cookie !== '') {
+        const cookies = document.cookie.split(';');
+        for (let i = 0; i < cookies.length; i++) {
+          const cookie = cookies[i].trim();
+          if (cookie.substring(0, name.length + 1) === (name + '=')) {
+            cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+            break;
+          }
+        }
+      }
+      return cookieValue;
+    }
+  </script>
+</body>
+</html>

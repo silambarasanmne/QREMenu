@@ -1,0 +1,389 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en" class="h-full bg-slate-950">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Luxe Royale | E-Menu Management Console</title>
+
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            amber: {
+              450: '#F59E0B',
+              550: '#D97706',
+            },
+            gold: '#F59E0B',
+          },
+          fontFamily: {
+            sans: ['Plus Jakarta Sans', 'Inter', 'sans-serif'],
+            serif: ['Playfair Display', 'Georgia', 'serif'],
+          }
+        }
+      }
+    }
+  </script>
+
+  <!-- Google Fonts & FontAwesome -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=Playfair+Display:ital,wght@0,600;0,700;1,600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+  <link rel="stylesheet" href="{% static 'css/tailwind-custom.css' %}">
+</head>
+<body class="min-h-full bg-slate-950 text-slate-100 flex flex-col justify-between selection:bg-amber-500 selection:text-slate-950">
+
+  <!-- Admin Header Bar -->
+  <header class="sticky top-0 z-40 bg-slate-900/95 backdrop-blur-xl border-b border-slate-800 shadow-xl px-4 sm:px-6 py-3.5">
+    <div class="max-w-7xl mx-auto flex items-center justify-between gap-4">
+      
+      <!-- Brand & Restaurant Badge -->
+      <div class="flex items-center space-x-3">
+        <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-amber-500 to-amber-300 text-slate-950 flex items-center justify-center font-bold text-xl shadow-md shadow-amber-500/20">
+          <i class="fa-solid fa-utensils"></i>
+        </div>
+        <div>
+          <h1 class="font-serif font-bold text-lg text-white leading-none">E-MENU MANAGEMENT</h1>
+          <p class="text-[10px] text-amber-400 font-extrabold tracking-widest uppercase">Restaurant Admin Console [{{ restaurant_id }}]</p>
+        </div>
+      </div>
+
+      <!-- Action Controls -->
+      <div class="flex items-center space-x-3">
+        <button onclick="openAddModal()" class="px-4 py-2 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 text-slate-950 font-extrabold text-xs sm:text-sm shadow-md shadow-amber-500/20 flex items-center space-x-2 transition-all active:scale-95">
+          <i class="fa-solid fa-plus text-xs"></i>
+          <span>Add New Dish</span>
+        </button>
+
+        <a href="{% url 'qr_menu_access' restaurant_id 12 %}" target="_blank" class="px-3.5 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold text-xs border border-slate-700 transition-colors flex items-center space-x-1.5">
+          <i class="fa-solid fa-qrcode text-amber-400"></i>
+          <span class="hidden sm:inline">Preview Customer Menu</span>
+        </a>
+
+        <a href="{% url 'logout_view' %}" class="w-9 h-9 rounded-xl bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border border-rose-500/30 flex items-center justify-center transition-colors">
+          <i class="fa-solid fa-right-from-bracket text-xs"></i>
+        </a>
+      </div>
+
+    </div>
+  </header>
+
+  <!-- Messages Alert -->
+  {% if messages %}
+  <div class="max-w-7xl mx-auto px-4 sm:px-6 pt-4">
+    {% for message in messages %}
+    <div class="glass-panel p-4 rounded-2xl border border-emerald-500/30 text-xs font-bold text-emerald-400 flex items-center space-x-2">
+      <i class="fa-solid fa-circle-check"></i>
+      <span>{{ message }}</span>
+    </div>
+    {% endfor %}
+  </div>
+  {% endif %}
+
+  <!-- Main Content Workspace -->
+  <main class="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 py-6 space-y-6">
+
+    <!-- Category Filter Bar -->
+    <div class="flex items-center space-x-2 overflow-x-auto no-scrollbar py-2">
+      <button onclick="filterAdminCategory('all')" data-cat="all" class="admin-cat-tab px-4 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap bg-amber-500 text-slate-950 shadow-sm">
+        All Dishes ({{ food_items|length }})
+      </button>
+      {% for cat in categories %}
+      <button onclick="filterAdminCategory('{{ cat.id }}')" data-cat="{{ cat.id }}" class="admin-cat-tab px-4 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap bg-slate-900 border border-slate-800 text-slate-300 hover:text-white">
+        {{ cat.name }} ({{ cat.food_items.count }})
+      </button>
+      {% endfor %}
+    </div>
+
+    <!-- Dish Table Grid -->
+    <div class="glass-panel rounded-3xl border border-slate-800 overflow-hidden shadow-2xl">
+      <div class="overflow-x-auto">
+        <table class="w-full text-left border-collapse">
+          <thead>
+            <tr class="border-b border-slate-800 bg-slate-900/80 text-[11px] font-bold text-slate-400 uppercase tracking-wider">
+              <th class="py-3.5 px-4">Dish</th>
+              <th class="py-3.5 px-4">Category</th>
+              <th class="py-3.5 px-4">Description</th>
+              <th class="py-3.5 px-4">Price</th>
+              <th class="py-3.5 px-4">Status</th>
+              <th class="py-3.5 px-4 text-right">Actions</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-slate-800/80 text-xs">
+            {% for item in food_items %}
+            <tr class="dish-row hover:bg-slate-900/40 transition-colors" data-cat="{{ item.category.id }}">
+              
+              <!-- Dish Image & Name -->
+              <td class="py-3.5 px-4">
+                <div class="flex items-center space-x-3">
+                  <div class="w-12 h-12 rounded-xl bg-slate-900 overflow-hidden flex-shrink-0 border border-slate-800">
+                    {% if item.image %}
+                    <img src="{{ item.image.url }}" alt="{{ item.name }}" class="w-full h-full object-cover" onerror="this.src='https://images.unsplash.com/photo-1546069901-ba9599a7e63c?auto=format&fit=crop&w=120&q=80'">
+                    {% else %}
+                    <img src="https://images.unsplash.com/photo-1546069901-ba9599a7e63c?auto=format&fit=crop&w=120&q=80" alt="{{ item.name }}" class="w-full h-full object-cover">
+                    {% endif %}
+                  </div>
+                  <div>
+                    <p class="font-bold text-white text-sm">{{ item.name }}</p>
+                    <p class="text-[10px] text-slate-500">ID: #{{ item.id }}</p>
+                  </div>
+                </div>
+              </td>
+
+              <!-- Category -->
+              <td class="py-3.5 px-4">
+                <span class="px-2.5 py-1 rounded-lg bg-slate-800 text-slate-300 font-semibold border border-slate-700/60">
+                  {{ item.category.name }}
+                </span>
+              </td>
+
+              <!-- Description -->
+              <td class="py-3.5 px-4 max-w-xs truncate text-slate-400">
+                {{ item.description|default:"No description provided." }}
+              </td>
+
+              <!-- Price -->
+              <td class="py-3.5 px-4 font-extrabold text-amber-400 text-sm">
+                ₹{{ item.price }}
+              </td>
+
+              <!-- Availability Status Toggle -->
+              <td class="py-3.5 px-4">
+                <button onclick="toggleAvailability('{{ item.id }}')" id="status-btn-{{ item.id }}"
+                  class="inline-flex items-center space-x-1.5 px-3 py-1 rounded-full text-xs font-extrabold transition-all shadow-sm
+                  {% if item.is_available %}bg-emerald-500/10 text-emerald-400 border border-emerald-500/30{% else %}bg-rose-500/10 text-rose-400 border border-rose-500/30{% endif %}">
+                  <span id="status-dot-{{ item.id }}" class="w-2 h-2 rounded-full {% if item.is_available %}bg-emerald-400 animate-pulse{% else %}bg-rose-400{% endif %}"></span>
+                  <span id="status-text-{{ item.id }}">{% if item.is_available %}AVAILABLE{% else %}OUT OF STOCK{% endif %}</span>
+                </button>
+              </td>
+
+              <!-- Action Controls -->
+              <td class="py-3.5 px-4 text-right">
+                <div class="flex items-center justify-end space-x-2">
+                  <button onclick="openEditModal('{{ item.id }}', '{{ item.name|escapejs }}', '{{ item.category.id }}', '{{ item.price }}', '{{ item.description|escapejs }}', {{ item.is_available|yesno:'true,false' }})"
+                    class="px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-amber-400 font-bold border border-slate-700 transition-colors">
+                    <i class="fa-solid fa-pen-to-square mr-1"></i> Edit
+                  </button>
+                  <a href="{% url 'delete_food_item_admin' item.id %}" onclick="return confirm('Are you sure you want to delete {{ item.name|escapejs }}?')"
+                    class="w-8 h-8 rounded-xl bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 flex items-center justify-center transition-colors">
+                    <i class="fa-solid fa-trash-can text-xs"></i>
+                  </a>
+                </div>
+              </td>
+
+            </tr>
+            {% empty %}
+            <tr>
+              <td colspan="6" class="text-center py-12 text-slate-500">
+                <i class="fa-solid fa-utensils text-3xl text-slate-600 mb-2"></i>
+                <p class="text-sm font-bold text-slate-400">No dishes created yet for Restaurant {{ restaurant_id }}</p>
+                <p class="text-xs text-slate-500">Click "Add New Dish" above to create your first menu item.</p>
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+  </main>
+
+  <!-- Add New Dish Modal -->
+  <div id="addDishModal" class="fixed inset-0 bg-slate-950/85 backdrop-blur-md z-50 flex items-center justify-center p-4 hidden">
+    <div class="glass-modal w-full max-w-lg rounded-3xl p-6 sm:p-8 border border-slate-800 space-y-6 shadow-2xl relative overflow-hidden">
+      
+      <div class="flex items-center justify-between border-b border-slate-800 pb-4">
+        <div class="flex items-center space-x-3">
+          <div class="w-10 h-10 rounded-2xl bg-amber-500/10 border border-amber-500/30 text-amber-400 flex items-center justify-center font-bold text-lg">
+            <i class="fa-solid fa-plus"></i>
+          </div>
+          <div>
+            <h3 class="font-serif font-bold text-xl text-white">Add New Dish</h3>
+            <p class="text-xs text-slate-400">Create new item for Restaurant {{ restaurant_id }}</p>
+          </div>
+        </div>
+        <button onclick="closeAddModal()" class="w-8 h-8 rounded-xl bg-slate-800 text-slate-400 hover:text-white flex items-center justify-center">
+          <i class="fa-solid fa-xmark"></i>
+        </button>
+      </div>
+
+      <form action="{% url 'add_food_item_admin' %}" method="POST" enctype="multipart/form-data" class="space-y-4">
+        {% csrf_token %}
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div>
+            <label class="text-xs font-bold text-slate-300">Select Category</label>
+            <select name="category_id" class="w-full mt-1 px-3 py-2.5 bg-slate-900 border border-slate-700 rounded-xl text-xs text-white focus:outline-none focus:border-amber-500">
+              {% for cat in categories %}
+              <option value="{{ cat.id }}">{{ cat.name }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div>
+            <label class="text-xs font-bold text-slate-300">Or Create New Category</label>
+            <input type="text" name="new_category_name" placeholder="e.g. Biriyani, Drinks" class="w-full mt-1 px-3 py-2.5 bg-slate-900 border border-slate-700 rounded-xl text-xs text-white focus:outline-none focus:border-amber-500">
+          </div>
+        </div>
+
+        <div>
+          <label class="text-xs font-bold text-slate-300">Dish Name</label>
+          <input type="text" name="name" placeholder="e.g. Chicken Biriyani" required class="w-full mt-1 px-3 py-2.5 bg-slate-900 border border-slate-700 rounded-xl text-xs text-white focus:outline-none focus:border-amber-500">
+        </div>
+
+        <div>
+          <label class="text-xs font-bold text-slate-300">Detailed Description</label>
+          <textarea name="description" rows="2" placeholder="e.g. Traditional chicken biriyani served with raita." class="w-full mt-1 px-3 py-2.5 bg-slate-900 border border-slate-700 rounded-xl text-xs text-white focus:outline-none focus:border-amber-500"></textarea>
+        </div>
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div>
+            <label class="text-xs font-bold text-slate-300">Price (₹)</label>
+            <input type="number" step="0.01" name="price" placeholder="220.00" required class="w-full mt-1 px-3 py-2.5 bg-slate-900 border border-slate-700 rounded-xl text-xs text-white focus:outline-none focus:border-amber-500">
+          </div>
+          <div>
+            <label class="text-xs font-bold text-slate-300">Dish Image File</label>
+            <input type="file" name="image" accept="image/*" class="w-full mt-1 text-xs text-slate-400 file:mr-3 file:py-2 file:px-3 file:rounded-xl file:border-0 file:text-xs file:font-bold file:bg-amber-500 file:text-slate-950 hover:file:bg-amber-400">
+          </div>
+        </div>
+
+        <div class="flex items-center space-x-2 pt-2">
+          <input type="checkbox" name="is_available" id="add_is_available" checked class="w-4 h-4 rounded text-amber-500 focus:ring-amber-500 bg-slate-900 border-slate-700">
+          <label for="add_is_available" class="text-xs font-bold text-slate-200">Set Dish as Available Immediately</label>
+        </div>
+
+        <button type="submit" class="w-full py-3.5 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 text-slate-950 font-extrabold text-sm rounded-xl shadow-lg shadow-amber-500/20 active:scale-98 transition-all">
+          SAVE NEW DISH TO E-MENU
+        </button>
+      </form>
+    </div>
+  </div>
+
+  <!-- Edit Dish Modal -->
+  <div id="editDishModal" class="fixed inset-0 bg-slate-950/85 backdrop-blur-md z-50 flex items-center justify-center p-4 hidden">
+    <div class="glass-modal w-full max-w-lg rounded-3xl p-6 sm:p-8 border border-slate-800 space-y-6 shadow-2xl relative overflow-hidden">
+      
+      <div class="flex items-center justify-between border-b border-slate-800 pb-4">
+        <div class="flex items-center space-x-3">
+          <div class="w-10 h-10 rounded-2xl bg-amber-500/10 border border-amber-500/30 text-amber-400 flex items-center justify-center font-bold text-lg">
+            <i class="fa-solid fa-pen-to-square"></i>
+          </div>
+          <div>
+            <h3 class="font-serif font-bold text-xl text-white">Edit Dish Details</h3>
+            <p class="text-xs text-slate-400">Update pricing, description & status</p>
+          </div>
+        </div>
+        <button onclick="closeEditModal()" class="w-8 h-8 rounded-xl bg-slate-800 text-slate-400 hover:text-white flex items-center justify-center">
+          <i class="fa-solid fa-xmark"></i>
+        </button>
+      </div>
+
+      <form id="editDishForm" method="POST" enctype="multipart/form-data" class="space-y-4">
+        {% csrf_token %}
+
+        <div>
+          <label class="text-xs font-bold text-slate-300">Category</label>
+          <select id="edit_category_id" name="category_id" class="w-full mt-1 px-3 py-2.5 bg-slate-900 border border-slate-700 rounded-xl text-xs text-white focus:outline-none focus:border-amber-500">
+            {% for cat in categories %}
+            <option value="{{ cat.id }}">{{ cat.name }}</option>
+            {% endfor %}
+          </select>
+        </div>
+
+        <div>
+          <label class="text-xs font-bold text-slate-300">Dish Name</label>
+          <input type="text" id="edit_name" name="name" required class="w-full mt-1 px-3 py-2.5 bg-slate-900 border border-slate-700 rounded-xl text-xs text-white focus:outline-none focus:border-amber-500">
+        </div>
+
+        <div>
+          <label class="text-xs font-bold text-slate-300">Detailed Description</label>
+          <textarea id="edit_description" name="description" rows="2" class="w-full mt-1 px-3 py-2.5 bg-slate-900 border border-slate-700 rounded-xl text-xs text-white focus:outline-none focus:border-amber-500"></textarea>
+        </div>
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div>
+            <label class="text-xs font-bold text-slate-300">Price (₹)</label>
+            <input type="number" step="0.01" id="edit_price" name="price" required class="w-full mt-1 px-3 py-2.5 bg-slate-900 border border-slate-700 rounded-xl text-xs text-white focus:outline-none focus:border-amber-500">
+          </div>
+          <div>
+            <label class="text-xs font-bold text-slate-300">Change Image</label>
+            <input type="file" name="image" accept="image/*" class="w-full mt-1 text-xs text-slate-400 file:mr-3 file:py-2 file:px-3 file:rounded-xl file:border-0 file:text-xs file:font-bold file:bg-amber-500 file:text-slate-950">
+          </div>
+        </div>
+
+        <div class="flex items-center space-x-2 pt-2">
+          <input type="checkbox" id="edit_is_available" name="is_available" class="w-4 h-4 rounded text-amber-500 focus:ring-amber-500 bg-slate-900 border-slate-700">
+          <label for="edit_is_available" class="text-xs font-bold text-slate-200">Dish Available for Customers</label>
+        </div>
+
+        <button type="submit" class="w-full py-3.5 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 text-slate-950 font-extrabold text-sm rounded-xl shadow-lg shadow-amber-500/20 active:scale-98 transition-all">
+          UPDATE DISH
+        </button>
+      </form>
+    </div>
+  </div>
+
+  <script>
+    function openAddModal() {
+      document.getElementById('addDishModal').classList.remove('hidden');
+    }
+    function closeAddModal() {
+      document.getElementById('addDishModal').classList.add('hidden');
+    }
+
+    function openEditModal(id, name, catId, price, description, isAvailable) {
+      document.getElementById('editDishForm').action = "/admin-menu/edit/" + id + "/";
+      document.getElementById('edit_name').value = name;
+      document.getElementById('edit_category_id').value = catId;
+      document.getElementById('edit_price').value = price;
+      document.getElementById('edit_description').value = description;
+      document.getElementById('edit_is_available').checked = isAvailable;
+      document.getElementById('editDishModal').classList.remove('hidden');
+    }
+    function closeEditModal() {
+      document.getElementById('editDishModal').classList.add('hidden');
+    }
+
+    function toggleAvailability(itemId) {
+      fetch("/admin-menu/toggle/" + itemId + "/")
+        .then(res => res.json())
+        .then(data => {
+          let btn = document.getElementById('status-btn-' + itemId);
+          let dot = document.getElementById('status-dot-' + itemId);
+          let text = document.getElementById('status-text-' + itemId);
+
+          if (data.is_available) {
+            btn.className = "inline-flex items-center space-x-1.5 px-3 py-1 rounded-full text-xs font-extrabold transition-all shadow-sm bg-emerald-500/10 text-emerald-400 border border-emerald-500/30";
+            dot.className = "w-2 h-2 rounded-full bg-emerald-400 animate-pulse";
+            text.innerText = "AVAILABLE";
+          } else {
+            btn.className = "inline-flex items-center space-x-1.5 px-3 py-1 rounded-full text-xs font-extrabold transition-all shadow-sm bg-rose-500/10 text-rose-400 border border-rose-500/30";
+            dot.className = "w-2 h-2 rounded-full bg-rose-400";
+            text.innerText = "OUT OF STOCK";
+          }
+        });
+    }
+
+    function filterAdminCategory(catId) {
+      document.querySelectorAll('.admin-cat-tab').forEach(tab => {
+        if (tab.getAttribute('data-cat') === catId) {
+          tab.className = "admin-cat-tab px-4 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap bg-amber-500 text-slate-950 shadow-sm";
+        } else {
+          tab.className = "admin-cat-tab px-4 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap bg-slate-900 border border-slate-800 text-slate-300 hover:text-white";
+        }
+      });
+
+      document.querySelectorAll('.dish-row').forEach(row => {
+        if (catId === 'all' || row.getAttribute('data-cat') === catId) {
+          row.classList.remove('hidden');
+        } else {
+          row.classList.add('hidden');
+        }
+      });
+    }
+  </script>
+</body>
+</html>

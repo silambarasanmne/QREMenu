@@ -1,0 +1,118 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en" class="h-full bg-slate-950">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{{ restaurant.name }} | Table QR Code Stand Cards</title>
+
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            amber: { 450: '#F59E0B' },
+          },
+          fontFamily: {
+            sans: ['Plus Jakarta Sans', 'Inter', 'sans-serif'],
+            serif: ['Playfair Display', 'Georgia', 'serif'],
+          }
+        }
+      }
+    }
+  </script>
+
+  <!-- Google Fonts & FontAwesome -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=Playfair+Display:ital,wght@0,600;0,700;1,600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+  <link rel="stylesheet" href="{% static 'css/tailwind-custom.css' %}">
+
+  <style>
+    @media print {
+      body {
+        background-color: white !important;
+        color: black !important;
+      }
+      .no-print {
+        display: none !important;
+      }
+      .qr-card {
+        border: 2px solid #000 !important;
+        background-color: white !important;
+        color: black !important;
+        page-break-inside: avoid;
+        break-inside: avoid;
+        box-shadow: none !important;
+      }
+      .qr-card * {
+        color: black !important;
+      }
+      .qr-badge {
+        background-color: #000 !important;
+        color: #fff !important;
+      }
+    }
+  </style>
+</head>
+<body class="min-h-full bg-slate-950 text-slate-100 py-8 px-4 selection:bg-amber-500 selection:text-slate-950">
+
+  <!-- Printable Header Controls (Hidden during print) -->
+  <div class="max-w-7xl mx-auto mb-8 flex items-center justify-between no-print border-b border-slate-800 pb-4">
+    <div class="flex items-center space-x-3">
+      <a href="{% url 'super_admin' %}" class="w-9 h-9 rounded-xl bg-slate-900 border border-slate-800 text-slate-400 hover:text-white flex items-center justify-center">
+        <i class="fa-solid fa-arrow-left"></i>
+      </a>
+      <div>
+        <h1 class="font-serif font-bold text-xl text-white">{{ restaurant.name }} — Table QR Cards</h1>
+        <p class="text-xs text-amber-400 font-bold">Restaurant Code: {{ restaurant.restaurant_id }} ({{ restaurant.table_count }} Tables)</p>
+      </div>
+    </div>
+
+    <button onclick="window.print()" class="px-5 py-2.5 bg-gradient-to-r from-amber-500 to-amber-600 text-slate-950 font-extrabold text-xs rounded-xl shadow-lg flex items-center space-x-2">
+      <i class="fa-solid fa-print"></i>
+      <span>PRINT TABLE QR CARDS</span>
+    </button>
+  </div>
+
+  <!-- QR Stand Cards Grid -->
+  <div class="max-w-7xl mx-auto grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+    
+    {% for item in tables_qr %}
+    <div class="qr-card glass-panel rounded-3xl p-6 border border-slate-800 text-center space-y-4 bg-slate-900/90 shadow-2xl relative overflow-hidden">
+      
+      <!-- Restaurant Header -->
+      <div class="space-y-1">
+        <div class="w-10 h-10 rounded-xl bg-amber-500/10 text-amber-400 font-bold flex items-center justify-center mx-auto text-lg">
+          <i class="fa-solid fa-utensils"></i>
+        </div>
+        <h2 class="font-serif font-bold text-base text-white uppercase tracking-tight">{{ restaurant.name }}</h2>
+        <p class="text-[10px] text-slate-400 uppercase tracking-widest">Contactless Dining Menu</p>
+      </div>
+
+      <!-- Table Number Badge -->
+      <div class="qr-badge py-1.5 px-4 bg-amber-500 text-slate-950 rounded-xl font-black text-sm uppercase tracking-widest inline-block shadow-md">
+        TABLE {{ item.table_number }}
+      </div>
+
+      <!-- Scannable QR Image -->
+      <div class="w-44 h-44 mx-auto bg-white p-3 rounded-2xl border-4 border-amber-500/40 shadow-xl flex items-center justify-center">
+        <img src="{{ item.qr_img }}" alt="Table {{ item.table_number }} QR Code" class="w-full h-full object-contain">
+      </div>
+
+      <!-- Scanning Instruction -->
+      <div class="space-y-1 pt-1">
+        <p class="text-xs font-bold text-slate-200">Scan with your Camera or UPI App</p>
+        <p class="text-[10px] text-slate-400">View Menu • Place Order • Live Status</p>
+      </div>
+
+    </div>
+    {% endfor %}
+
+  </div>
+
+</body>
+</html>

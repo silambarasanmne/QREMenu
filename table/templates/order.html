@@ -1,0 +1,257 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en" class="h-full bg-slate-950">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Luxe Royale | My Orders & Cart</title>
+
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            amber: {
+              450: '#F59E0B',
+              550: '#D97706',
+            },
+            gold: '#F59E0B',
+          },
+          fontFamily: {
+            sans: ['Plus Jakarta Sans', 'Inter', 'sans-serif'],
+            serif: ['Playfair Display', 'Georgia', 'serif'],
+          }
+        }
+      }
+    }
+  </script>
+
+  <!-- Google Fonts & FontAwesome -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=Playfair+Display:ital,wght@0,600;0,700;1,600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+  <link rel="stylesheet" href="{% static 'css/tailwind-custom.css' %}">
+</head>
+<body class="min-h-full bg-slate-950 text-slate-100 pb-20 selection:bg-amber-500 selection:text-slate-950">
+
+  <!-- Header Navigation -->
+  <header class="sticky top-0 z-40 bg-slate-900/90 backdrop-blur-xl border-b border-slate-800/80 shadow-md">
+    <div class="max-w-4xl mx-auto px-4 sm:px-6 py-3.5 flex items-center justify-between">
+      
+      <a href="{% url 'table_home' %}" class="inline-flex items-center space-x-2 text-slate-300 hover:text-amber-400 font-bold text-xs sm:text-sm transition-colors">
+        <i class="fa-solid fa-arrow-left text-sm"></i>
+        <span>Back to Menu</span>
+      </a>
+
+      <div class="flex items-center space-x-2">
+        <div class="w-8 h-8 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-400 flex items-center justify-center text-sm font-bold">
+          <i class="fa-solid fa-chair"></i>
+        </div>
+        <span id="orderTableBadge" class="text-xs sm:text-sm font-bold text-white">Table: {{ table_number|default:"--" }}</span>
+      </div>
+
+    </div>
+  </header>
+
+  <!-- Main Container -->
+  <main class="max-w-4xl mx-auto px-4 sm:px-6 py-8 space-y-8">
+    
+    <!-- Section 1: Unsubmitted Cart Items (Waiting to be Sent to Kitchen) -->
+    <section class="space-y-4">
+      <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+        <div class="flex items-center space-x-2">
+          <i class="fa-solid fa-basket-shopping text-amber-400 text-lg"></i>
+          <h2 class="font-serif text-xl font-bold text-white">Cart Items (Pending Submission)</h2>
+        </div>
+        <span class="text-xs font-semibold text-slate-400">{{ not_submitted_items|length }} items ready</span>
+      </div>
+
+      {% if not_submitted_items %}
+      <div class="space-y-3">
+        {% for item in not_submitted_items %}
+        <div class="glass-panel rounded-2xl p-4 border border-slate-800 flex items-center justify-between gap-4">
+          
+          <div class="flex items-center space-x-3.5">
+            <div class="w-14 h-14 rounded-xl bg-slate-900 overflow-hidden flex-shrink-0 border border-slate-800">
+              {% if item.image %}
+              <img src="{{ item.image.url }}" alt="{{ item.name }}" class="w-full h-full object-cover" onerror="this.src='https://images.unsplash.com/photo-1546069901-ba9599a7e63c?auto=format&fit=crop&w=200&q=80'">
+              {% else %}
+              <img src="https://images.unsplash.com/photo-1546069901-ba9599a7e63c?auto=format&fit=crop&w=200&q=80" alt="{{ item.name }}" class="w-full h-full object-cover">
+              {% endif %}
+            </div>
+            <div>
+              <h3 class="font-bold text-sm text-white">{{ item.name }}</h3>
+              <p class="text-xs text-amber-400 font-extrabold mt-0.5">₹{{ item.price }} <span class="text-slate-400 font-normal">per item</span></p>
+            </div>
+          </div>
+
+          <div class="flex items-center space-x-4">
+            <div class="flex items-center space-x-1.5 bg-slate-900 border border-slate-800 rounded-xl p-1">
+              <span class="text-xs font-bold text-slate-300 px-2.5">Qty: {{ item.quantity }}</span>
+            </div>
+            <form action="{% url 'cancel_item' item.id %}" method="POST" class="inline">
+              {% csrf_token %}
+              <button type="submit" class="w-8 h-8 rounded-xl bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 flex items-center justify-center transition-colors">
+                <i class="fa-solid fa-trash-can text-xs"></i>
+              </button>
+            </form>
+          </div>
+
+        </div>
+        {% endfor %}
+
+        <!-- Submit All Order Action Bar -->
+        <div class="glass-panel rounded-2xl p-5 border border-amber-500/30 space-y-4">
+          <div class="flex justify-between items-center text-sm font-bold text-white">
+            <span>Subtotal for New Items</span>
+            <span class="text-lg text-amber-400">₹{{ total_bill|default:"0.00" }}</span>
+          </div>
+
+          <form id="placeOrderForm" action="{% url 'submit_order' %}" method="POST" onsubmit="handlePlaceOrderSubmit(event)">
+            {% csrf_token %}
+            <button id="placeOrderBtn" type="submit"
+              class="w-full py-4 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-slate-950 font-extrabold text-base rounded-xl shadow-lg shadow-amber-500/25 flex items-center justify-center space-x-2 transition-all active:scale-[0.98]">
+              <i class="fa-solid fa-paper-plane text-sm"></i>
+              <span id="btnText">PLACE ORDER TO KITCHEN</span>
+            </button>
+          </form>
+        </div>
+      </div>
+      {% else %}
+      <div class="glass-panel rounded-3xl p-8 text-center space-y-3 border border-slate-800">
+        <div class="w-12 h-12 rounded-full bg-slate-900 text-slate-500 flex items-center justify-center text-xl mx-auto">
+          <i class="fa-solid fa-utensils"></i>
+        </div>
+        <h3 class="text-sm font-bold text-slate-300">No new items in cart</h3>
+        <p class="text-xs text-slate-500 max-w-xs mx-auto">Your unsubmitted cart is clean. Browse our menu to add appetizers, main courses, or beverages.</p>
+        <a href="{% url 'table_home' %}" class="inline-block px-4 py-2 bg-slate-800 hover:bg-slate-700 text-amber-400 text-xs font-bold rounded-xl border border-amber-500/20">
+          Browse Food Menu
+        </a>
+      </div>
+      {% endif %}
+    </section>
+
+    <!-- Section 2: Active Submitted Kitchen Orders & Status Timeline -->
+    <section class="space-y-4 pt-4">
+      <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+        <div class="flex items-center space-x-2">
+          <i class="fa-solid fa-fire-burner text-amber-400 text-lg"></i>
+          <h2 class="font-serif text-xl font-bold text-white">Live Kitchen Order Tracker</h2>
+        </div>
+        <span class="text-xs font-semibold text-emerald-400 flex items-center">
+          <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse mr-1.5"></span> Live Tracking
+        </span>
+      </div>
+
+      {% if submitted_items %}
+      <div class="space-y-4">
+        {% for item in submitted_items %}
+        <div class="glass-panel rounded-2xl p-5 border border-slate-800 space-y-4">
+          
+          <div class="flex items-center justify-between">
+            <div class="flex items-center space-x-3">
+              <div class="w-10 h-10 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-400 flex items-center justify-center font-bold text-sm">
+                #{{ item.id }}
+              </div>
+              <div>
+                <h3 class="font-bold text-base text-white">{{ item.name }}</h3>
+                <p class="text-xs text-slate-400">Qty: <span class="font-bold text-white">{{ item.quantity }}</span> • ₹{{ item.total_price }}</p>
+              </div>
+            </div>
+
+            <!-- Status Pill Badge -->
+            {% if item.status == 'pending' %}
+            <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-bold bg-amber-500/10 text-amber-400 border border-amber-500/30">
+              <i class="fa-solid fa-clock mr-1.5 animate-spin"></i> 🟡 Sent to Kitchen
+            </span>
+            {% elif item.status == 'confirmed' %}
+            <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-bold bg-indigo-500/10 text-indigo-400 border border-indigo-500/30">
+              <i class="fa-solid fa-fire mr-1.5"></i> 🔵 Preparing in Kitchen
+            </span>
+            {% elif item.status == 'ready' %}
+            <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/30">
+              <i class="fa-solid fa-circle-check mr-1.5"></i> 🟢 Ready for Table
+            </span>
+            {% else %}
+            <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-bold bg-slate-800 text-slate-300">
+              <i class="fa-solid fa-check-double mr-1.5"></i> ⚫ Served
+            </span>
+            {% endif %}
+          </div>
+
+          <!-- Timeline Indicator -->
+          <div class="pt-2 border-t border-slate-800/80">
+            <div class="relative flex items-center justify-between text-[11px] font-semibold text-slate-400 px-2">
+              
+              <div class="flex flex-col items-center space-y-1 text-amber-400">
+                <div class="w-6 h-6 rounded-full bg-amber-500/20 border-2 border-amber-500 flex items-center justify-center text-[10px]">1</div>
+                <span>Order Placed</span>
+              </div>
+
+              <div class="flex-1 h-0.5 bg-slate-800 mx-2"></div>
+
+              <div class="flex flex-col items-center space-y-1 {% if item.status == 'confirmed' or item.status == 'ready' %}text-indigo-400{% else %}text-slate-600{% endif %}">
+                <div class="w-6 h-6 rounded-full {% if item.status == 'confirmed' or item.status == 'ready' %}bg-indigo-500/20 border-2 border-indigo-500{% else %}bg-slate-800 border-2 border-slate-700{% endif %} flex items-center justify-center text-[10px]">2</div>
+                <span>Preparing</span>
+              </div>
+
+              <div class="flex-1 h-0.5 bg-slate-800 mx-2"></div>
+
+              <div class="flex flex-col items-center space-y-1 {% if item.status == 'ready' %}text-emerald-400{% else %}text-slate-600{% endif %}">
+                <div class="w-6 h-6 rounded-full {% if item.status == 'ready' %}bg-emerald-500/20 border-2 border-emerald-500{% else %}bg-slate-800 border-2 border-slate-700{% endif %} flex items-center justify-center text-[10px]">3</div>
+                <span>Ready to Serve</span>
+              </div>
+
+            </div>
+          </div>
+
+        </div>
+        {% endfor %}
+
+        <!-- View Total Bill Action Banner -->
+        <div class="glass-panel rounded-2xl p-5 border border-emerald-500/30 flex items-center justify-between gap-4">
+          <div>
+            <h4 class="font-bold text-sm text-white">Finished Dining?</h4>
+            <p class="text-xs text-slate-400">View your total bill statement before staff payment collection.</p>
+          </div>
+          <a href="{% url 'bill' %}" class="px-5 py-3 bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-400 text-slate-950 font-extrabold text-xs rounded-xl shadow-lg shadow-emerald-500/20 whitespace-nowrap flex items-center space-x-1.5 transition-all">
+            <i class="fa-solid fa-file-invoice"></i>
+            <span>VIEW TOTAL BILL</span>
+          </a>
+        </div>
+
+      </div>
+      {% else %}
+
+      <div class="glass-panel rounded-3xl p-8 text-center space-y-3 border border-slate-800">
+        <div class="w-12 h-12 rounded-full bg-slate-900 text-slate-500 flex items-center justify-center text-xl mx-auto">
+          <i class="fa-solid fa-receipt"></i>
+        </div>
+        <h3 class="text-sm font-bold text-slate-300">No active submitted orders</h3>
+        <p class="text-xs text-slate-500 max-w-xs mx-auto">Your submitted items will show live kitchen progress here once sent.</p>
+      </div>
+      {% endif %}
+    </section>
+
+  </main>
+
+  <!-- Script for Place Order Button Loading State -->
+  <script>
+    function handlePlaceOrderSubmit(e) {
+      let btn = document.getElementById('placeOrderBtn');
+      let textSpan = document.getElementById('btnText');
+      
+      // Prevent double submission
+      btn.disabled = true;
+      btn.classList.add('opacity-75', 'cursor-not-allowed');
+      textSpan.innerHTML = `<i class="fa-solid fa-spinner animate-spin mr-2"></i> Placing your order...`;
+
+      // Clear local storage cart state on order submit
+      localStorage.removeItem('hotel_cart');
+    }
+  </script>
+</body>
+</html>

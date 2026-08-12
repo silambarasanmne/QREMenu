@@ -1,0 +1,49 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en" class="h-full bg-slate-950">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Luxe Royale | Select Table Number</title>
+
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Google Fonts & FontAwesome -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=Playfair+Display:ital,wght@0,600;0,700;1,600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+  <link rel="stylesheet" href="{% static 'css/tailwind-custom.css' %}">
+</head>
+<body class="h-full bg-slate-950 text-slate-100 flex items-center justify-center p-4">
+
+  <div class="glass-modal w-full max-w-md rounded-3xl p-8 text-center space-y-6 border border-slate-800 shadow-2xl relative overflow-hidden">
+    <div class="w-16 h-16 rounded-2xl bg-amber-500/10 border border-amber-500/30 text-amber-400 flex items-center justify-center text-3xl mx-auto shadow-inner">
+      <i class="fa-solid fa-chair"></i>
+    </div>
+
+    <div class="space-y-2">
+      <h2 class="font-serif text-2xl font-bold text-white">Select Your Table</h2>
+      <p class="text-xs text-slate-400">Enter your assigned table number to begin dining experience.</p>
+    </div>
+
+    <form method="POST" action="{% url 'set_table_number' %}" class="space-y-4">
+      {% csrf_token %}
+      <div class="relative">
+        <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-amber-400">
+          <i class="fa-solid fa-utensils"></i>
+        </div>
+        <input type="number" name="table_number" min="1" max="50" placeholder="Table Number (e.g. 5)" required
+          class="w-full pl-11 pr-4 py-3.5 bg-slate-900 border border-slate-700/80 rounded-xl text-center text-lg font-bold text-white placeholder-slate-500 focus:outline-none focus:border-amber-500 transition-all">
+      </div>
+
+      <button type="submit"
+        class="w-full py-4 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-slate-950 font-extrabold text-sm rounded-xl shadow-lg shadow-amber-500/25 flex items-center justify-center space-x-2 transition-all active:scale-[0.98]">
+        <span>Continue to Menu</span>
+        <i class="fa-solid fa-arrow-right text-xs"></i>
+      </button>
+    </form>
+  </div>
+
+</body>
+</html>

@@ -1,0 +1,397 @@
+{% extends "counter/base.html" %}
+{% load custom_filters %}
+{% load static %}
+
+{% block start %}
+<div class="space-y-8">
+
+  <!-- Top Dashboard Metrics Cards -->
+  <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
+    
+    <!-- Today's Orders Card -->
+    <div class="glass-panel rounded-3xl p-5 border border-slate-800 space-y-3 relative overflow-hidden group hover:border-amber-500/40 transition-all">
+      <div class="flex items-center justify-between">
+        <span class="text-xs font-bold text-slate-400 uppercase tracking-wider">Today's Orders</span>
+        <div class="w-10 h-10 rounded-2xl bg-amber-500/10 text-amber-400 flex items-center justify-center text-lg">
+          <i class="fa-solid fa-utensils"></i>
+        </div>
+      </div>
+      <div class="flex items-baseline space-x-2">
+        <h3 class="text-3xl font-extrabold text-white">{{ confirmed_orders|length|default:"45" }}</h3>
+        <span class="text-xs text-emerald-400 font-bold"><i class="fa-solid fa-arrow-up text-[10px]"></i> Active</span>
+      </div>
+      <p class="text-[11px] text-slate-500">Fulfilled dining tickets today</p>
+    </div>
+
+    <!-- Pending Bills Card -->
+    <div class="glass-panel rounded-3xl p-5 border border-slate-800 space-y-3 relative overflow-hidden group hover:border-amber-500/40 transition-all">
+      <div class="flex items-center justify-between">
+        <span class="text-xs font-bold text-slate-400 uppercase tracking-wider">Pending Bills</span>
+        <div class="w-10 h-10 rounded-2xl bg-amber-500/10 text-amber-400 flex items-center justify-center text-lg">
+          <i class="fa-solid fa-file-invoice-dollar"></i>
+        </div>
+      </div>
+      <div class="flex items-baseline space-x-2">
+        <h3 class="text-3xl font-extrabold text-amber-400">{{ confirmed_orders|length }}</h3>
+        <span class="text-xs text-amber-400 font-bold">Awaiting Settlement</span>
+      </div>
+      <p class="text-[11px] text-slate-500">Tables requiring payment collection</p>
+    </div>
+
+    <!-- Cash Collection Card -->
+    <div class="glass-panel rounded-3xl p-5 border border-slate-800 space-y-3 relative overflow-hidden group hover:border-emerald-500/40 transition-all">
+      <div class="flex items-center justify-between">
+        <span class="text-xs font-bold text-slate-400 uppercase tracking-wider">Cash Collection</span>
+        <div class="w-10 h-10 rounded-2xl bg-emerald-500/10 text-emerald-400 flex items-center justify-center text-lg">
+          <i class="fa-solid fa-money-bill-wave"></i>
+        </div>
+      </div>
+      <div class="flex items-baseline space-x-2">
+        <h3 class="text-3xl font-extrabold text-white">₹8,500</h3>
+        <span class="text-xs text-slate-400">Cash Received</span>
+      </div>
+      <p class="text-[11px] text-slate-500">Physical cash register balance</p>
+    </div>
+
+    <!-- Hotel QR Collection Card -->
+    <div class="glass-panel rounded-3xl p-5 border border-slate-800 space-y-3 relative overflow-hidden group hover:border-indigo-500/40 transition-all">
+      <div class="flex items-center justify-between">
+        <span class="text-xs font-bold text-slate-400 uppercase tracking-wider">Hotel QR Collection</span>
+        <div class="w-10 h-10 rounded-2xl bg-indigo-500/10 text-indigo-400 flex items-center justify-center text-lg">
+          <i class="fa-solid fa-qrcode"></i>
+        </div>
+      </div>
+      <div class="flex items-baseline space-x-2">
+        <h3 class="text-3xl font-extrabold text-indigo-400">₹9,950</h3>
+        <span class="text-xs text-indigo-400 font-bold">UPI Payments</span>
+      </div>
+      <p class="text-[11px] text-slate-500">Direct contactless UPI receipts</p>
+    </div>
+
+  </div>
+
+  <!-- Live Table Availability Grid (Staff View) -->
+  <div class="space-y-4">
+    <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+      <div>
+        <h2 class="font-serif text-2xl font-bold text-white">Live Table Status Overview</h2>
+        <p class="text-xs text-slate-400 mt-0.5">Real-time occupancy status for floor waiters & cashier staff.</p>
+      </div>
+      <div class="flex items-center space-x-4 text-xs font-bold">
+        <span class="flex items-center text-emerald-400"><span class="w-3 h-3 rounded-full bg-emerald-500 mr-1.5"></span> 🟢 Available</span>
+        <span class="flex items-center text-amber-400"><span class="w-3 h-3 rounded-full bg-amber-500 mr-1.5 animate-ping"></span> 🟡 Ready to Serve</span>
+        <span class="flex items-center text-rose-400"><span class="w-3 h-3 rounded-full bg-rose-500 mr-1.5"></span> 🔴 Occupied</span>
+      </div>
+    </div>
+
+    <div class="grid grid-cols-3 sm:grid-cols-5 md:grid-cols-8 gap-3">
+      {% for t_num, t_status in tables_status.items %}
+      <div class="glass-panel rounded-2xl p-3 text-center border space-y-1 transition-all
+        {% if t_status == 'ready_to_serve' %}border-amber-500/80 bg-amber-500/10 animate-pulse{% elif t_status == 'occupied' %}border-rose-500/50 bg-rose-500/10{% else %}border-slate-800 bg-slate-900/60{% endif %}">
+        <span class="text-xs font-bold text-slate-300">Table {{ t_num }}</span>
+        <div class="text-lg">
+          {% if t_status == 'ready_to_serve' %}🟡{% elif t_status == 'occupied' %}🔴{% else %}🟢{% endif %}
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+
+  <!-- Section 1: Orders Ready to Serve (Waiter Action) -->
+  {% if ready_orders %}
+  <div class="space-y-4 pt-2">
+    <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+      <div>
+        <h2 class="font-serif text-2xl font-bold text-amber-400 flex items-center gap-2">
+          <i class="fa-solid fa-bell animate-bounce"></i> Orders Ready to Serve
+        </h2>
+        <p class="text-xs text-slate-400 mt-0.5">Kitchen marked these orders as ready. Waiters deliver to table and click SERVED.</p>
+      </div>
+      <span class="px-3 py-1 bg-amber-500/20 text-amber-300 border border-amber-500/40 text-xs font-bold rounded-xl animate-pulse">
+        {{ ready_orders|length }} Table(s) Ready
+      </span>
+    </div>
+
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+      {% for table_number, items in ready_orders.items %}
+      <div class="glass-panel rounded-3xl p-5 border border-amber-500/40 space-y-4 bg-slate-900/90 shadow-xl">
+        <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+          <div class="flex items-center space-x-3">
+            <div class="w-10 h-10 rounded-2xl bg-amber-500 text-slate-950 font-extrabold text-base flex items-center justify-center shadow-md">
+              T{{ table_number }}
+            </div>
+            <div>
+              <h3 class="font-bold text-base text-white">Table #{{ table_number }}</h3>
+              <p class="text-xs text-amber-400 font-semibold">Kitchen Alert: Ready</p>
+            </div>
+          </div>
+          <span class="px-2.5 py-1 rounded-lg bg-amber-500/20 text-amber-300 border border-amber-500/40 text-xs font-extrabold">
+            🟡 READY
+          </span>
+        </div>
+
+        <div class="space-y-1.5 text-xs bg-slate-950/80 p-3 rounded-2xl border border-slate-800">
+          {% for item in items %}
+          <div class="flex justify-between py-1 border-b border-slate-900 last:border-0">
+            <span class="font-bold text-white">{{ item.name }}</span>
+            <span class="font-extrabold text-amber-400">×{{ item.quantity }}</span>
+          </div>
+          {% endfor %}
+        </div>
+
+        <form method="post" action="{% url 'mark_served' table_number %}">
+          {% csrf_token %}
+          <button type="submit" class="w-full py-3 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 text-slate-950 font-extrabold text-xs rounded-xl shadow-lg flex items-center justify-center space-x-2 transition-all">
+            <i class="fa-solid fa-concierge-bell"></i>
+            <span>MARK AS SERVED</span>
+          </button>
+        </form>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+  {% endif %}
+
+  <!-- Section 2: Active Table Accounts & Staff Settlement -->
+  <div class="space-y-4">
+    <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+      <div>
+        <h2 class="font-serif text-2xl font-bold text-white">Active Table Accounts & Bill Settlement</h2>
+        <p class="text-xs text-slate-400 mt-0.5">Staff selects Cash or UPI payment, verifies payment, and completes order.</p>
+      </div>
+      <span class="px-3 py-1 bg-amber-500/10 border border-amber-500/30 text-amber-400 text-xs font-bold rounded-xl">
+        {{ confirmed_orders|length }} Active Account(s)
+      </span>
+    </div>
+
+    {% if confirmed_orders %}
+    <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+      
+      {% for table_number, items in confirmed_orders.items %}
+      <div id="table-card-{{ table_number }}" class="glass-panel rounded-3xl p-5 border border-slate-800 flex flex-col justify-between space-y-5 hover:border-amber-500/40 transition-all shadow-xl">
+        
+        <!-- Header -->
+        <div class="flex items-center justify-between border-b border-slate-800 pb-3.5">
+          <div class="flex items-center space-x-3">
+            <div class="w-11 h-11 rounded-2xl bg-gradient-to-br from-amber-500 to-amber-600 text-slate-950 font-extrabold text-base flex items-center justify-center shadow-md shadow-amber-500/20">
+              T{{ table_number }}
+            </div>
+            <div>
+              <h3 class="font-bold text-base text-white">Table #{{ table_number }}</h3>
+              <p class="text-xs text-slate-400">{{ items|length }} Unique Item(s)</p>
+            </div>
+          </div>
+          <span class="px-2.5 py-1 rounded-lg bg-amber-500/10 text-amber-400 border border-amber-500/30 text-xs font-bold">
+            UNPAID
+          </span>
+        </div>
+
+        <!-- Itemized Order Table -->
+        <div class="space-y-2 max-h-48 overflow-y-auto pr-1 no-scrollbar">
+          {% for item_name, item_data in items.items %}
+          <div class="flex items-center justify-between text-xs py-1.5 border-b border-slate-900 last:border-0">
+            <div class="truncate max-w-[150px]">
+              <p class="font-bold text-white truncate">{{ item_name }}</p>
+              <p class="text-slate-500">₹{{ item_data.price|floatformat:2 }} × {{ item_data.quantity }}</p>
+            </div>
+            <span class="font-bold text-amber-400">₹{{ item_data.total_price|floatformat:2 }}</span>
+          </div>
+          {% endfor %}
+        </div>
+
+        <!-- Total & Staff Action -->
+        <div class="pt-3 border-t border-slate-800 space-y-3">
+          <div class="flex justify-between items-center text-sm font-bold text-white">
+            <span>Bill Total</span>
+            <span class="text-lg text-amber-400 font-extrabold">
+              ₹{{ table_totals|get_value_from_dict:table_number|floatformat:2 }}
+            </span>
+          </div>
+
+          <button onclick="openPaymentModal('{{ table_number }}', '{{ table_totals|get_value_from_dict:table_number|floatformat:2 }}')"
+            class="w-full py-3.5 bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-400 hover:to-emerald-500 text-slate-950 font-extrabold text-xs sm:text-sm rounded-2xl shadow-lg shadow-emerald-500/20 flex items-center justify-center space-x-2 active:scale-98 transition-all">
+            <i class="fa-solid fa-credit-card"></i>
+            <span>COLLECT PAYMENT & SETTLE</span>
+          </button>
+        </div>
+
+      </div>
+      {% endfor %}
+
+    </div>
+    {% else %}
+    <div class="glass-panel rounded-3xl p-16 text-center space-y-4 border border-slate-800 max-w-md mx-auto my-12">
+      <div class="w-16 h-16 rounded-full bg-slate-900 text-emerald-400 flex items-center justify-center text-3xl mx-auto shadow-inner">
+        <i class="fa-solid fa-circle-check"></i>
+      </div>
+      <h3 class="text-xl font-bold text-white">No Pending Bills!</h3>
+      <p class="text-xs text-slate-400">All table accounts are settled. Cashier register is in sync.</p>
+    </div>
+    {% endif %}
+  </div>
+
+  <!-- Interactive Payment & Hotel QR Modal for Staff -->
+  <div id="paymentModal" class="fixed inset-0 bg-slate-950/85 backdrop-blur-md z-50 flex items-center justify-center p-4 hidden">
+    <div class="glass-modal w-full max-w-lg rounded-3xl p-6 sm:p-8 border border-slate-800 space-y-6 shadow-2xl relative overflow-hidden">
+      
+      <!-- Modal Header -->
+      <div class="flex items-center justify-between border-b border-slate-800 pb-4">
+        <div class="flex items-center space-x-3">
+          <div class="w-10 h-10 rounded-2xl bg-amber-500/10 border border-amber-500/30 text-amber-400 flex items-center justify-center font-bold text-lg">
+            <i class="fa-solid fa-file-invoice"></i>
+          </div>
+          <div>
+            <h3 id="modalPayTitle" class="font-serif font-bold text-xl text-white">STAFF SETTLEMENT — Table #</h3>
+            <p class="text-xs text-slate-400">Staff Payment Verification Console</p>
+          </div>
+        </div>
+        <button onclick="closePaymentModal()" class="w-8 h-8 rounded-xl bg-slate-800 text-slate-400 hover:text-white flex items-center justify-center">
+          <i class="fa-solid fa-xmark"></i>
+        </button>
+      </div>
+
+      <!-- Bill Breakdown -->
+      <div class="bg-slate-900/90 rounded-2xl p-4 border border-slate-800 space-y-2 text-xs">
+        <div class="flex justify-between text-slate-400">
+          <span>Items Subtotal</span>
+          <span id="modalSubtotal">₹0.00</span>
+        </div>
+        <div class="flex justify-between text-slate-400">
+          <span>GST Tax (5%)</span>
+          <span id="modalTax">₹0.00</span>
+        </div>
+        <div class="flex justify-between text-base font-extrabold text-white pt-2 border-t border-slate-800">
+          <span>TOTAL AMOUNT TO COLLECT</span>
+          <span id="modalGrandTotal" class="text-amber-400 text-lg">₹0.00</span>
+        </div>
+      </div>
+
+      <!-- Staff Payment Method Selector -->
+      <div class="space-y-3">
+        <p class="text-xs font-bold text-slate-300 uppercase tracking-wider">Select Received Payment Method</p>
+        
+        <div class="grid grid-cols-2 gap-3">
+          <button id="btnPayCash" onclick="selectPayMethod('cash')"
+            class="py-3.5 px-4 rounded-2xl border border-slate-700 bg-slate-900 text-white font-bold text-xs flex flex-col items-center justify-center space-y-1.5 hover:border-emerald-500 transition-all">
+            <i class="fa-solid fa-money-bill-wave text-emerald-400 text-xl"></i>
+            <span>💵 CASH PAYMENT</span>
+          </button>
+
+          <button id="btnPayQR" onclick="selectPayMethod('upi')"
+            class="py-3.5 px-4 rounded-2xl border border-amber-500/50 bg-amber-500/10 text-amber-300 font-bold text-xs flex flex-col items-center justify-center space-y-1.5 hover:border-amber-400 transition-all">
+            <i class="fa-solid fa-qrcode text-amber-400 text-xl"></i>
+            <span>▣ HOTEL UPI QR</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Hotel QR Display Panel for Staff -->
+      <div id="hotelQrPanel" class="glass-panel rounded-2xl p-5 text-center space-y-3 border border-amber-500/30 bg-slate-900/90 hidden">
+        <h4 class="font-serif font-bold text-amber-400 text-sm">LUXE ROYALE HOTEL UPI QR</h4>
+        <p class="text-xs text-slate-300">Show QR to customer for scanning via Google Pay, PhonePe, Paytm</p>
+        
+        <div class="w-44 h-44 mx-auto bg-white p-3 rounded-2xl shadow-xl border-4 border-amber-500/40 flex items-center justify-center">
+          <img id="qrCodeImg" src="" alt="Hotel UPI QR" class="w-full h-full object-contain">
+        </div>
+
+        <p id="qrPayInstruction" class="text-[11px] text-slate-400">After receiving UPI confirmation, click PAYMENT DONE below.</p>
+      </div>
+
+      <!-- Staff Action Confirmation Button -->
+      <button id="btnConfirmPay" onclick="confirmPaymentAndClear()"
+        class="w-full py-4 bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-400 hover:to-emerald-500 text-slate-950 font-extrabold text-base rounded-2xl shadow-lg shadow-emerald-500/25 flex items-center justify-center space-x-2 active:scale-98 transition-all">
+        <i class="fa-solid fa-check-circle text-lg"></i>
+        <span>PAYMENT DONE</span>
+      </button>
+
+    </div>
+  </div>
+
+</div>
+
+<!-- Payment Script -->
+<script>
+  let activePayTable = null;
+  let activePayAmount = 0;
+  let selectedMethod = 'upi';
+
+  function openPaymentModal(tableNum, amount) {
+    activePayTable = tableNum;
+    activePayAmount = parseFloat(amount);
+
+    let tax = activePayAmount * 0.05;
+    let grandTotal = activePayAmount + tax;
+
+    document.getElementById('modalPayTitle').innerText = "STAFF SETTLEMENT — Table #" + tableNum;
+    document.getElementById('modalSubtotal').innerText = "₹" + activePayAmount.toFixed(2);
+    document.getElementById('modalTax').innerText = "₹" + tax.toFixed(2);
+    document.getElementById('modalGrandTotal').innerText = "₹" + grandTotal.toFixed(2);
+
+    let upiString = `upi://pay?pa=luxeroyalehotel@upi&pn=LuxeRoyaleHotel&am=${grandTotal.toFixed(2)}&cu=INR`;
+    let qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=${encodeURIComponent(upiString)}`;
+    document.getElementById('qrCodeImg').src = qrUrl;
+
+    selectPayMethod('upi');
+    document.getElementById('paymentModal').classList.remove('hidden');
+  }
+
+  function selectPayMethod(method) {
+    selectedMethod = method;
+    let qrPanel = document.getElementById('hotelQrPanel');
+    let btnCash = document.getElementById('btnPayCash');
+    let btnQR = document.getElementById('btnPayQR');
+
+    if (method === 'upi') {
+      qrPanel.classList.remove('hidden');
+      btnQR.className = "py-3.5 px-4 rounded-2xl border-2 border-amber-500 bg-amber-500/20 text-white font-bold text-xs flex flex-col items-center justify-center space-y-1.5 shadow-lg shadow-amber-500/20";
+      btnCash.className = "py-3.5 px-4 rounded-2xl border border-slate-800 bg-slate-900 text-slate-400 font-bold text-xs flex flex-col items-center justify-center space-y-1.5 opacity-60";
+    } else {
+      qrPanel.classList.add('hidden');
+      btnCash.className = "py-3.5 px-4 rounded-2xl border-2 border-emerald-500 bg-emerald-500/20 text-white font-bold text-xs flex flex-col items-center justify-center space-y-1.5 shadow-lg shadow-emerald-500/20";
+      btnQR.className = "py-3.5 px-4 rounded-2xl border border-slate-800 bg-slate-900 text-slate-400 font-bold text-xs flex flex-col items-center justify-center space-y-1.5 opacity-60";
+    }
+  }
+
+  function closePaymentModal() {
+    document.getElementById('paymentModal').classList.add('hidden');
+  }
+
+  function confirmPaymentAndClear() {
+    if (!activePayTable) return;
+
+    fetch(`/counter/delete_orders/${activePayTable}/`, {
+      method: 'DELETE',
+      headers: {
+        'X-CSRFToken': getCookie('csrftoken'),
+      }
+    })
+    .then(response => {
+      if (response.ok) {
+        closePaymentModal();
+        let card = document.getElementById(`table-card-${activePayTable}`);
+        if (card) card.remove();
+        alert(`Payment confirmed via ${selectedMethod.toUpperCase()} for Table #${activePayTable}. Account settled & table available.`);
+        location.reload();
+      } else {
+        alert('Error settling bill.');
+      }
+    })
+    .catch(err => console.error(err));
+  }
+
+  function getCookie(name) {
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+      const cookies = document.cookie.split(';');
+      for (let i = 0; i < cookies.length; i++) {
+        const cookie = cookies[i].trim();
+        if (cookie.substring(0, name.length + 1) === (name + '=')) {
+          cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+          break;
+        }
+      }
+    }
+    return cookieValue;
+  }
+</script>
+{% endblock start %}

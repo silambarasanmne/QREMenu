@@ -1,0 +1,102 @@
+{% extends "kitchen/base.html" %}
+{% load static %}
+
+{% block table %}
+<div class="space-y-6">
+
+  <!-- Header -->
+  <div class="flex items-center justify-between border-b border-slate-800 pb-4">
+    <div>
+      <h2 class="font-serif text-2xl font-bold text-white">All Hotel Dining Tables</h2>
+      <p class="text-xs text-slate-400 mt-0.5">Click any table tile to view assigned order ticket details.</p>
+    </div>
+    <span class="px-3 py-1 bg-amber-500/10 border border-amber-500/30 text-amber-400 text-xs font-bold rounded-xl">
+      Total Tables: 15
+    </span>
+  </div>
+
+  <!-- Tables Grid -->
+  <div class="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-8 gap-3 sm:gap-4">
+    {% for table_number in table_numbers %}
+    <button onclick="openTableModal('{{ table_number }}')"
+      class="glass-panel group rounded-2xl p-4 border border-slate-800 hover:border-amber-500/50 hover:bg-slate-900 flex flex-col items-center justify-center space-y-1.5 transition-all hover:scale-105 active:scale-95 shadow-md">
+      <div class="w-10 h-10 rounded-xl bg-amber-500/10 text-amber-400 font-extrabold text-base flex items-center justify-center group-hover:bg-amber-500 group-hover:text-slate-950 transition-all">
+        {{ table_number }}
+      </div>
+      <span class="text-[11px] font-semibold text-slate-400">Table {{ table_number }}</span>
+    </button>
+    {% endfor %}
+  </div>
+
+  <!-- Table Details Modal -->
+  <div id="tableDetailsModal" class="fixed inset-0 bg-slate-950/80 backdrop-blur-md z-50 flex items-center justify-center p-4 hidden">
+    <div class="glass-modal w-full max-w-md rounded-3xl p-6 border border-slate-800 space-y-5">
+      
+      <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+        <div class="flex items-center space-x-2">
+          <div class="w-8 h-8 rounded-xl bg-amber-500/10 text-amber-400 flex items-center justify-center font-bold text-sm">
+            <i class="fa-solid fa-chair"></i>
+          </div>
+          <h3 id="modalTableTitle" class="font-bold text-lg text-white">Table Details</h3>
+        </div>
+        <button onclick="closeTableModal()" class="w-8 h-8 rounded-xl bg-slate-800 text-slate-400 hover:text-white flex items-center justify-center">
+          <i class="fa-solid fa-xmark"></i>
+        </button>
+      </div>
+
+      <div id="modalContentArea" class="space-y-3 min-h-32 text-xs">
+        <!-- Injected dynamic content -->
+      </div>
+
+      <div class="flex justify-end pt-2">
+        <button onclick="closeTableModal()" class="px-5 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-bold rounded-xl border border-slate-700">
+          Close Window
+        </button>
+      </div>
+
+    </div>
+  </div>
+
+</div>
+
+<script>
+  function openTableModal(tableNum) {
+    document.getElementById('modalTableTitle').innerText = "Table #" + tableNum + " Order Sheet";
+    let content = document.getElementById('modalContentArea');
+    
+    // Fetch live table receipt/order details
+    fetch("/kitchen/api/get_table_receipt/" + tableNum + "/")
+      .then(res => res.json())
+      .then(data => {
+        if (data.items) {
+          let html = `
+            <div class="space-y-2">
+              <p class="text-slate-400">Customer: <strong class="text-white">\${data.customer_name || 'Guest'}</strong></p>
+              <div class="bg-slate-900 rounded-xl p-3 border border-slate-800 space-y-1.5">
+          `;
+          data.items.forEach(item => {
+            html += `
+              <div class="flex justify-between py-1 border-b border-slate-800/50 last:border-0">
+                <span class="font-bold text-white">\${item.item}</span>
+                <span class="text-amber-400 font-extrabold">×\${item.qty}</span>
+              </div>
+            `;
+          });
+          html += `</div></div>`;
+          content.innerHTML = html;
+        } else {
+          content.innerHTML = `<p class="text-slate-400 text-center py-6">No active order items found for Table #\${tableNum}.</p>`;
+        }
+      })
+      .catch(() => {
+        content.innerHTML = `<p class="text-slate-400 text-center py-6">Table #\${tableNum} is available for seating.</p>`;
+      });
+
+    document.getElementById('tableDetailsModal').classList.remove('hidden');
+  }
+
+  function closeTableModal() {
+    document.getElementById('tableDetailsModal').classList.add('hidden');
+  }
+</script>
+{% endblock %}

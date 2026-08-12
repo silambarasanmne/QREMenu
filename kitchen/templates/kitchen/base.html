@@ -1,0 +1,159 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en" class="h-full bg-slate-950">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Luxe Royale | Kitchen Display System (KDS)</title>
+
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            amber: {
+              450: '#F59E0B',
+              550: '#D97706',
+            },
+            gold: '#F59E0B',
+          },
+          fontFamily: {
+            sans: ['Plus Jakarta Sans', 'Inter', 'sans-serif'],
+            serif: ['Playfair Display', 'Georgia', 'serif'],
+          }
+        }
+      }
+    }
+  </script>
+
+  <!-- Google Fonts & FontAwesome -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=Playfair+Display:ital,wght@0,600;0,700;1,600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+  <link rel="stylesheet" href="{% static 'css/tailwind-custom.css' %}">
+</head>
+<body class="min-h-full bg-slate-950 text-slate-100 flex flex-col justify-between selection:bg-amber-500 selection:text-slate-950">
+
+  <!-- Kitchen Display Header Bar -->
+  <header class="sticky top-0 z-40 bg-slate-900/95 backdrop-blur-xl border-b border-slate-800 shadow-xl px-4 sm:px-6 py-3">
+    <div class="max-w-7xl mx-auto flex items-center justify-between gap-4">
+      
+      <!-- Brand & KDS Label -->
+      <div class="flex items-center space-x-3">
+        <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-amber-500 to-amber-300 text-slate-950 flex items-center justify-center font-bold text-xl shadow-md shadow-amber-500/20">
+          <i class="fa-solid fa-kitchen-set"></i>
+        </div>
+        <div>
+          <h1 class="font-serif font-bold text-lg text-white leading-none">KITCHEN DISPLAY SYSTEM</h1>
+          <p class="text-[10px] text-amber-400 font-extrabold tracking-widest uppercase">Luxe Royale Executive Kitchen</p>
+        </div>
+      </div>
+
+      <!-- Center Live Clock -->
+      <div class="hidden md:flex items-center space-x-2 px-4 py-1.5 rounded-xl bg-slate-950/80 border border-slate-800 text-slate-300 text-xs font-mono">
+        <i class="fa-regular fa-clock text-amber-400"></i>
+        <span id="kdsLiveClock">00:00:00 AM</span>
+      </div>
+
+      <!-- Right Controls: Audio Toggle, Refresh, Navigation -->
+      <div class="flex items-center space-x-3">
+        
+        <!-- Sound Mute/Unmute Button -->
+        <button id="soundToggleBtn" onclick="toggleKdsSound()" class="px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-xs font-bold text-slate-300 flex items-center space-x-1.5 transition-colors">
+          <i id="soundIcon" class="fa-solid fa-volume-high text-emerald-400"></i>
+          <span id="soundText" class="hidden sm:inline">Sound ON</span>
+        </button>
+
+        <!-- Navigation Tabs -->
+        <a href="{% url 'kitchen_home' %}?tab=recent" class="px-3.5 py-1.5 rounded-xl bg-amber-500 text-slate-950 font-bold text-xs shadow-md shadow-amber-500/20 hover:bg-amber-400 transition-all">
+          <i class="fa-solid fa-fire mr-1"></i> Active Orders
+        </a>
+        <a href="{% url 'tableList' %}?tab=all" class="px-3.5 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold text-xs border border-slate-700 transition-colors">
+          <i class="fa-solid fa-border-all mr-1"></i> Tables Overview
+        </a>
+        <a href="{% url 'home' %}" class="w-8 h-8 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white flex items-center justify-center transition-colors">
+          <i class="fa-solid fa-house text-xs"></i>
+        </a>
+
+      </div>
+
+    </div>
+  </header>
+
+  <!-- Main KDS Workspace Content -->
+  <main class="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 py-6">
+    {% block start %}{% endblock %}
+    {% block content %}{% endblock %}
+    {% block table %}{% endblock %}
+  </main>
+
+  <!-- KDS Footer -->
+  <footer class="border-t border-slate-900 bg-slate-950 px-4 py-3 text-center text-xs text-slate-500">
+    <div class="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-2">
+      <p>© 2026 Luxe Royale Hotel | Kitchen Operations Station</p>
+      <div class="flex items-center space-x-3 text-[11px]">
+        <span class="inline-flex items-center text-emerald-400"><span class="w-2 h-2 rounded-full bg-emerald-400 animate-ping mr-1"></span> Live Syncing</span>
+        <span>•</span>
+        <span>Auto-refresh enabled</span>
+      </div>
+    </div>
+  </footer>
+
+  <script>
+    // Digital Clock
+    function updateClock() {
+      const now = new Date();
+      const clockEl = document.getElementById('kdsLiveClock');
+      if (clockEl) {
+        clockEl.innerText = now.toLocaleTimeString();
+      }
+    }
+    setInterval(updateClock, 1000);
+    updateClock();
+
+    // Web Audio Sound Chime State
+    let isSoundMuted = localStorage.getItem('kds_sound_muted') === 'true';
+
+    function initSoundBtn() {
+      const icon = document.getElementById('soundIcon');
+      const text = document.getElementById('soundText');
+      if (isSoundMuted) {
+        icon.className = "fa-solid fa-volume-xmark text-rose-400";
+        text.innerText = "Sound MUTE";
+      } else {
+        icon.className = "fa-solid fa-volume-high text-emerald-400";
+        text.innerText = "Sound ON";
+      }
+    }
+
+    function toggleKdsSound() {
+      isSoundMuted = !isSoundMuted;
+      localStorage.setItem('kds_sound_muted', isSoundMuted);
+      initSoundBtn();
+    }
+
+    function playNewOrderChime() {
+      if (isSoundMuted) return;
+      try {
+        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(587.33, audioCtx.currentTime); // D5 note
+        osc.frequency.exponentialRampToValueAtTime(880, audioCtx.currentTime + 0.3); // A5 note
+        gain.gain.setValueAtTime(0.3, audioCtx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.5);
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+        osc.start();
+        osc.stop(audioCtx.currentTime + 0.5);
+      } catch (e) {}
+    }
+
+    initSoundBtn();
+  </script>
+</body>
+</html>

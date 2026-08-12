@@ -1,0 +1,94 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en" class="h-full bg-slate-950">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Luxe Royale | Cashier & Billing Desk</title>
+
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            amber: {
+              450: '#F59E0B',
+              550: '#D97706',
+            },
+            gold: '#F59E0B',
+          },
+          fontFamily: {
+            sans: ['Plus Jakarta Sans', 'Inter', 'sans-serif'],
+            serif: ['Playfair Display', 'Georgia', 'serif'],
+          }
+        }
+      }
+    }
+  </script>
+
+  <!-- Google Fonts & FontAwesome -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=Playfair+Display:ital,wght@0,600;0,700;1,600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+  <link rel="stylesheet" href="{% static 'css/tailwind-custom.css' %}">
+</head>
+<body class="min-h-full bg-slate-950 text-slate-100 flex flex-col justify-between selection:bg-amber-500 selection:text-slate-950">
+
+  <!-- Cashier Header Navbar -->
+  <header class="sticky top-0 z-40 bg-slate-900/95 backdrop-blur-xl border-b border-slate-800 shadow-xl px-4 sm:px-6 py-3.5">
+    <div class="max-w-7xl mx-auto flex items-center justify-between gap-4">
+      
+      <!-- Brand -->
+      <a href="{% url 'counter_home' %}" class="flex items-center space-x-3 group">
+        <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-emerald-500 to-emerald-300 text-slate-950 flex items-center justify-center font-bold text-xl shadow-md shadow-emerald-500/20">
+          <i class="fa-solid fa-cash-register"></i>
+        </div>
+        <div>
+          <h1 class="font-serif font-bold text-lg text-white leading-none">CASHIER DESK</h1>
+          <p class="text-[10px] text-emerald-400 font-extrabold tracking-widest uppercase">Luxe Royale Billing Operations</p>
+        </div>
+      </a>
+
+      <!-- Right Nav Options -->
+      <div class="flex items-center space-x-3">
+        <a href="{% url 'counter_home' %}?tab=recent" class="px-3.5 py-1.5 rounded-xl bg-amber-500 text-slate-950 font-bold text-xs shadow-md shadow-amber-500/20 hover:bg-amber-400 transition-all">
+          <i class="fa-solid fa-receipt mr-1"></i> Active Bills
+        </a>
+        <a href="{% url 'tableList1' %}?tab=all" class="px-3.5 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold text-xs border border-slate-700 transition-colors">
+          <i class="fa-solid fa-border-all mr-1"></i> All Tables
+        </a>
+        <a href="{% url 'home' %}" class="w-8 h-8 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white flex items-center justify-center transition-colors">
+          <i class="fa-solid fa-house text-xs"></i>
+        </a>
+        {% if user.is_authenticated %}
+        <a href="{% url 'logout_view' %}" class="px-3 py-1.5 rounded-xl bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 font-bold text-xs border border-rose-500/30 transition-colors">
+          Logout
+        </a>
+        {% endif %}
+      </div>
+
+    </div>
+  </header>
+
+  <!-- Main Workspace -->
+  <main class="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 py-6">
+    {% block start %}{% endblock %}
+    {% block login %}{% endblock %}
+    {% block table %}{% endblock %}
+  </main>
+
+  <!-- Footer -->
+  <footer class="border-t border-slate-900 bg-slate-950 px-4 py-3 text-center text-xs text-slate-500">
+    <div class="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-2">
+      <p>© 2026 Luxe Royale Hotel | Cashier Billing Console</p>
+      <div class="flex items-center space-x-3 text-[11px]">
+        <span class="inline-flex items-center text-emerald-400"><i class="fa-solid fa-shield-halved mr-1"></i> Encrypted POS Gateway</span>
+      </div>
+    </div>
+  </footer>
+
+</body>
+</html>
