@@ -24,11 +24,11 @@ from django.conf import settings
 from django.shortcuts import redirect
 
 urlpatterns = [
-    path('', lambda request: redirect('super_admin'), name='home'),
+    path('', views.super_admin_view, name='super_admin'),
+    path('super-admin/', views.super_admin_view, name='super_admin_alt'),
     path('menu/<str:restaurant_id>/table<int:table_number>/', views.qr_menu_access, name='qr_menu_access'),
     path('menu/table<int:table_number>/', views.qr_menu_access, name='qr_menu_access_default'),
     path('login/', views.staff_login_view, name='staff_login'),
-    path('super-admin/', views.super_admin_view, name='super_admin'),
     path('super-admin/onboard/', views.onboard_restaurant_view, name='onboard_restaurant'),
     path('super-admin/toggle/<str:restaurant_id>/', views.toggle_restaurant_active_view, name='toggle_restaurant_active'),
     path('super-admin/delete/<str:restaurant_id>/', views.delete_restaurant_view, name='delete_restaurant'),
