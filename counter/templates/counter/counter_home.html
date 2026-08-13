@@ -178,19 +178,28 @@
             </div>
             <div>
               <h3 class="font-bold text-base text-white">Table #{{ table_number }}</h3>
-              <p class="text-xs text-slate-400">{{ items|length }} Unique Item(s)</p>
+              <p class="text-xs text-slate-400">{{ items|length }} Unique Item(s) • Running Bill</p>
             </div>
           </div>
-          <span class="px-2.5 py-1 rounded-lg bg-amber-500/10 text-amber-400 border border-amber-500/30 text-xs font-bold">
-            UNPAID
+          
+          {% with info=table_rounds_info|get_value_from_dict:table_number %}
+          {% if info.has_addons %}
+          <span class="px-2.5 py-1 rounded-lg bg-amber-500/20 text-amber-300 border border-amber-500/50 text-xs font-bold animate-pulse flex items-center">
+            <i class="fa-solid fa-fire mr-1 text-amber-400"></i> ADD-ON R#{{ info.max_round }}
           </span>
+          {% else %}
+          <span class="px-2.5 py-1 rounded-lg bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 text-xs font-bold flex items-center">
+            <i class="fa-solid fa-folder-open mr-1 text-emerald-400"></i> OPEN BILL
+          </span>
+          {% endif %}
+          {% endwith %}
         </div>
 
-        <!-- Itemized Order Table -->
+        <!-- Itemized Running Bill Table -->
         <div class="space-y-2 max-h-48 overflow-y-auto pr-1 no-scrollbar">
           {% for item_name, item_data in items.items %}
           <div class="flex items-center justify-between text-xs py-1.5 border-b border-slate-900 last:border-0">
-            <div class="truncate max-w-[150px]">
+            <div class="truncate max-w-[170px]">
               <p class="font-bold text-white truncate">{{ item_name }}</p>
               <p class="text-slate-500">₹{{ item_data.price|floatformat:2 }} × {{ item_data.quantity }}</p>
             </div>
@@ -230,78 +239,115 @@
     {% endif %}
   </div>
 
-  <!-- Interactive Payment & Hotel QR Modal for Staff -->
-  <div id="paymentModal" class="fixed inset-0 bg-slate-950/85 backdrop-blur-md z-50 flex items-center justify-center p-4 hidden">
-    <div class="glass-modal w-full max-w-lg rounded-3xl p-6 sm:p-8 border border-slate-800 space-y-6 shadow-2xl relative overflow-hidden">
-      
-      <!-- Modal Header -->
-      <div class="flex items-center justify-between border-b border-slate-800 pb-4">
-        <div class="flex items-center space-x-3">
-          <div class="w-10 h-10 rounded-2xl bg-amber-500/10 border border-amber-500/30 text-amber-400 flex items-center justify-center font-bold text-lg">
-            <i class="fa-solid fa-file-invoice"></i>
+  <!-- Success Popup Toast Notification -->
+  <div id="successToast" class="fixed top-6 right-6 z-50 transform -translate-y-20 opacity-0 transition-all duration-300 pointer-events-none">
+    <div class="glass-panel bg-slate-900 border-2 border-emerald-500 text-white rounded-2xl p-4 shadow-2xl flex items-center space-x-3 text-xs font-bold backdrop-blur-xl">
+      <div class="w-8 h-8 rounded-xl bg-emerald-500 text-slate-950 flex items-center justify-center font-extrabold text-base">
+        <i class="fa-solid fa-circle-check"></i>
+      </div>
+      <div>
+        <h4 class="font-extrabold text-emerald-400 text-sm">Settlement Successful!</h4>
+        <p id="toastMessage" class="text-slate-300 text-xs">Payment confirmed and account cleared.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Interactive Collapsible Payment & Hotel QR Panel for Staff -->
+  <div id="paymentModal" class="fixed bottom-4 right-4 sm:bottom-6 sm:right-6 z-50 transition-all duration-300 transform hidden">
+    
+    <!-- Minimized Floating Pill Badge (When Panel is Collapsed) -->
+    <div id="paymentMinimizedPill" class="hidden glass-panel bg-slate-900/95 border-2 border-amber-500/80 rounded-2xl p-2.5 shadow-2xl flex items-center space-x-3 text-xs backdrop-blur-xl">
+      <div class="w-7 h-7 rounded-lg bg-amber-500/20 text-amber-400 flex items-center justify-center font-bold text-xs">
+        <i class="fa-solid fa-qrcode animate-pulse"></i>
+      </div>
+      <div>
+        <p id="minimizedTableText" class="font-extrabold text-white text-xs">Table # — UPI Active</p>
+        <p id="minimizedAmountText" class="text-amber-400 font-bold text-[10px]">₹0.00</p>
+      </div>
+      <div class="flex items-center space-x-1 pl-2 border-l border-slate-800">
+        <button onclick="expandPaymentPanel()" title="Expand QR Panel" class="px-2 py-1 rounded-md bg-amber-500 hover:bg-amber-400 text-slate-950 font-extrabold text-[10px] shadow transition-all">
+          <i class="fa-solid fa-expand mr-1"></i> Expand
+        </button>
+        <button onclick="closePaymentModal()" title="Close" class="w-6 h-6 rounded-md bg-slate-800 hover:bg-rose-500/20 text-slate-400 hover:text-rose-400 flex items-center justify-center transition-all">
+          <i class="fa-solid fa-xmark text-xs"></i>
+        </button>
+      </div>
+    </div>
+
+    <!-- Expanded Compact Panel (Low Height Layout) -->
+    <div id="paymentExpandedPanel" class="glass-modal w-[310px] sm:w-[340px] rounded-2xl p-4 border border-amber-500/40 bg-slate-950/95 space-y-2.5 shadow-2xl relative overflow-hidden backdrop-blur-xl">
+      <div class="absolute -top-8 -right-8 w-24 h-24 bg-amber-500/10 rounded-full blur-xl pointer-events-none"></div>
+
+      <!-- Panel Header with Action Buttons (Minimize + Close X) -->
+      <div class="flex items-center justify-between border-b border-slate-800/80 pb-2">
+        <div class="flex items-center space-x-2">
+          <div class="w-7 h-7 rounded-lg bg-amber-500/10 border border-amber-500/30 text-amber-400 flex items-center justify-center font-bold text-xs">
+            <i class="fa-solid fa-receipt"></i>
           </div>
           <div>
-            <h3 id="modalPayTitle" class="font-serif font-bold text-xl text-white">STAFF SETTLEMENT — Table #</h3>
-            <p class="text-xs text-slate-400">Staff Payment Verification Console</p>
+            <h3 id="modalPayTitle" class="font-serif font-bold text-xs text-white">SETTLEMENT — Table #</h3>
+            <p class="text-[9px] text-slate-400">Cashier Desk Console</p>
           </div>
         </div>
-        <button onclick="closePaymentModal()" class="w-8 h-8 rounded-xl bg-slate-800 text-slate-400 hover:text-white flex items-center justify-center">
-          <i class="fa-solid fa-xmark"></i>
+        
+        <div class="flex items-center space-x-1">
+          <!-- Minimize / Collapse Button -->
+          <button onclick="minimizePaymentPanel()" title="Collapse Panel" class="w-7 h-7 rounded-lg bg-slate-900 border border-slate-800 text-slate-400 hover:text-amber-400 hover:border-amber-500/40 flex items-center justify-center transition-all">
+            <i class="fa-solid fa-compress text-[10px]"></i>
+          </button>
+          <!-- Close Button (X) -->
+          <button onclick="closePaymentModal()" title="Close Panel" class="w-7 h-7 rounded-lg bg-slate-900 border border-slate-800 text-slate-400 hover:text-rose-400 hover:border-rose-500/40 flex items-center justify-center transition-all">
+            <i class="fa-solid fa-xmark text-xs font-bold"></i>
+          </button>
+        </div>
+      </div>
+
+      <!-- Compact Bill Summary Badge -->
+      <div class="bg-slate-900/80 rounded-lg p-2 border border-slate-800 flex items-center justify-between text-[11px]">
+        <div>
+          <span class="text-slate-400 text-[9px] block">Subtotal: <span id="modalSubtotal" class="text-slate-300">₹0.00</span> | Tax: <span id="modalTax" class="text-slate-300">₹0.00</span></span>
+          <span class="font-bold text-white text-[11px]">TOTAL AMOUNT</span>
+        </div>
+        <span id="modalGrandTotal" class="text-amber-400 text-sm font-extrabold">₹0.00</span>
+      </div>
+
+      <!-- Payment Method Option Tabs -->
+      <div class="grid grid-cols-2 gap-1.5">
+        <button id="btnPayCash" onclick="selectPayMethod('cash')"
+          class="py-1.5 px-2 rounded-lg border border-slate-700 bg-slate-900 text-white font-bold text-[11px] flex items-center justify-center space-x-1.5 hover:border-emerald-500 transition-all">
+          <i class="fa-solid fa-money-bill-wave text-emerald-400 text-xs"></i>
+          <span>💵 CASH</span>
+        </button>
+
+        <button id="btnPayQR" onclick="selectPayMethod('upi')"
+          class="py-1.5 px-2 rounded-lg border-2 border-amber-500 bg-amber-500/20 text-white font-bold text-[11px] flex items-center justify-center space-x-1.5 shadow-sm shadow-amber-500/20">
+          <i class="fa-solid fa-qrcode text-amber-400 text-xs"></i>
+          <span>▣ UPI QR</span>
         </button>
       </div>
 
-      <!-- Bill Breakdown -->
-      <div class="bg-slate-900/90 rounded-2xl p-4 border border-slate-800 space-y-2 text-xs">
-        <div class="flex justify-between text-slate-400">
-          <span>Items Subtotal</span>
-          <span id="modalSubtotal">₹0.00</span>
+      <!-- Low Height Hotel UPI QR Sub-panel -->
+      <div id="hotelQrPanel" class="glass-panel rounded-xl p-2 text-center space-y-1 border border-amber-500/30 bg-slate-900/90">
+        <!-- Supported UPI Apps Badges (GPay, PhonePe, Paytm) -->
+        <div class="flex items-center justify-center space-x-1 py-0.5">
+          <span class="px-1.5 py-0.5 rounded bg-slate-800 text-[8px] text-emerald-400 border border-slate-700 font-bold">GPay</span>
+          <span class="px-1.5 py-0.5 rounded bg-slate-800 text-[8px] text-purple-400 border border-slate-700 font-bold">PhonePe</span>
+          <span class="px-1.5 py-0.5 rounded bg-slate-800 text-[8px] text-sky-400 border border-slate-700 font-bold">Paytm</span>
         </div>
-        <div class="flex justify-between text-slate-400">
-          <span>GST Tax (5%)</span>
-          <span id="modalTax">₹0.00</span>
-        </div>
-        <div class="flex justify-between text-base font-extrabold text-white pt-2 border-t border-slate-800">
-          <span>TOTAL AMOUNT TO COLLECT</span>
-          <span id="modalGrandTotal" class="text-amber-400 text-lg">₹0.00</span>
-        </div>
-      </div>
 
-      <!-- Staff Payment Method Selector -->
-      <div class="space-y-3">
-        <p class="text-xs font-bold text-slate-300 uppercase tracking-wider">Select Received Payment Method</p>
-        
-        <div class="grid grid-cols-2 gap-3">
-          <button id="btnPayCash" onclick="selectPayMethod('cash')"
-            class="py-3.5 px-4 rounded-2xl border border-slate-700 bg-slate-900 text-white font-bold text-xs flex flex-col items-center justify-center space-y-1.5 hover:border-emerald-500 transition-all">
-            <i class="fa-solid fa-money-bill-wave text-emerald-400 text-xl"></i>
-            <span>💵 CASH PAYMENT</span>
-          </button>
-
-          <button id="btnPayQR" onclick="selectPayMethod('upi')"
-            class="py-3.5 px-4 rounded-2xl border border-amber-500/50 bg-amber-500/10 text-amber-300 font-bold text-xs flex flex-col items-center justify-center space-y-1.5 hover:border-amber-400 transition-all">
-            <i class="fa-solid fa-qrcode text-amber-400 text-xl"></i>
-            <span>▣ HOTEL UPI QR</span>
-          </button>
-        </div>
-      </div>
-
-      <!-- Hotel QR Display Panel for Staff -->
-      <div id="hotelQrPanel" class="glass-panel rounded-2xl p-5 text-center space-y-3 border border-amber-500/30 bg-slate-900/90 hidden">
-        <h4 class="font-serif font-bold text-amber-400 text-sm">LUXE ROYALE HOTEL UPI QR</h4>
-        <p class="text-xs text-slate-300">Show QR to customer for scanning via Google Pay, PhonePe, Paytm</p>
-        
-        <div class="w-44 h-44 mx-auto bg-white p-3 rounded-2xl shadow-xl border-4 border-amber-500/40 flex items-center justify-center">
+        <!-- Reduced Height QR Code Image Container -->
+        <div class="w-24 h-24 mx-auto bg-white p-1.5 rounded-xl shadow-md border border-amber-500/40 flex items-center justify-center">
           <img id="qrCodeImg" src="" alt="Hotel UPI QR" class="w-full h-full object-contain">
         </div>
 
-        <p id="qrPayInstruction" class="text-[11px] text-slate-400">After receiving UPI confirmation, click PAYMENT DONE below.</p>
+        <p id="qrPayInstruction" class="text-[9px] text-slate-400">Scan QR code via UPI app</p>
       </div>
 
-      <!-- Staff Action Confirmation Button -->
+      <!-- Confirm Settlement Button -->
       <button id="btnConfirmPay" onclick="confirmPaymentAndClear()"
-        class="w-full py-4 bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-400 hover:to-emerald-500 text-slate-950 font-extrabold text-base rounded-2xl shadow-lg shadow-emerald-500/25 flex items-center justify-center space-x-2 active:scale-98 transition-all">
-        <i class="fa-solid fa-check-circle text-lg"></i>
-        <span>PAYMENT DONE</span>
+        class="w-full py-2.5 bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-400 hover:to-emerald-500 text-slate-950 font-extrabold text-xs rounded-lg shadow-md shadow-emerald-500/20 flex items-center justify-center space-x-1.5 active:scale-98 transition-all">
+        <i class="fa-solid fa-circle-check text-sm"></i>
+        <span>CONFIRM PAYMENT & SETTLE</span>
       </button>
 
     </div>
@@ -322,17 +368,33 @@
     let tax = activePayAmount * 0.05;
     let grandTotal = activePayAmount + tax;
 
-    document.getElementById('modalPayTitle').innerText = "STAFF SETTLEMENT — Table #" + tableNum;
+    document.getElementById('modalPayTitle').innerText = "SETTLEMENT — Table #" + tableNum;
     document.getElementById('modalSubtotal').innerText = "₹" + activePayAmount.toFixed(2);
     document.getElementById('modalTax').innerText = "₹" + tax.toFixed(2);
     document.getElementById('modalGrandTotal').innerText = "₹" + grandTotal.toFixed(2);
 
+    document.getElementById('minimizedTableText').innerText = "Table #" + tableNum + " — UPI Active";
+    document.getElementById('minimizedAmountText').innerText = "₹" + grandTotal.toFixed(2);
+
     let upiString = `upi://pay?pa=luxeroyalehotel@upi&pn=LuxeRoyaleHotel&am=${grandTotal.toFixed(2)}&cu=INR`;
-    let qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=${encodeURIComponent(upiString)}`;
+    let qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=140x140&data=${encodeURIComponent(upiString)}`;
     document.getElementById('qrCodeImg').src = qrUrl;
 
     selectPayMethod('upi');
+    
+    document.getElementById('paymentExpandedPanel').classList.remove('hidden');
+    document.getElementById('paymentMinimizedPill').classList.add('hidden');
     document.getElementById('paymentModal').classList.remove('hidden');
+  }
+
+  function minimizePaymentPanel() {
+    document.getElementById('paymentExpandedPanel').classList.add('hidden');
+    document.getElementById('paymentMinimizedPill').classList.remove('hidden');
+  }
+
+  function expandPaymentPanel() {
+    document.getElementById('paymentMinimizedPill').classList.add('hidden');
+    document.getElementById('paymentExpandedPanel').classList.remove('hidden');
   }
 
   function selectPayMethod(method) {
@@ -343,12 +405,12 @@
 
     if (method === 'upi') {
       qrPanel.classList.remove('hidden');
-      btnQR.className = "py-3.5 px-4 rounded-2xl border-2 border-amber-500 bg-amber-500/20 text-white font-bold text-xs flex flex-col items-center justify-center space-y-1.5 shadow-lg shadow-amber-500/20";
-      btnCash.className = "py-3.5 px-4 rounded-2xl border border-slate-800 bg-slate-900 text-slate-400 font-bold text-xs flex flex-col items-center justify-center space-y-1.5 opacity-60";
+      btnQR.className = "py-1.5 px-2 rounded-lg border-2 border-amber-500 bg-amber-500/20 text-white font-bold text-[11px] flex items-center justify-center space-x-1.5 shadow-sm shadow-amber-500/20";
+      btnCash.className = "py-1.5 px-2 rounded-lg border border-slate-800 bg-slate-900 text-slate-400 font-bold text-[11px] flex items-center justify-center space-x-1.5 opacity-70";
     } else {
       qrPanel.classList.add('hidden');
-      btnCash.className = "py-3.5 px-4 rounded-2xl border-2 border-emerald-500 bg-emerald-500/20 text-white font-bold text-xs flex flex-col items-center justify-center space-y-1.5 shadow-lg shadow-emerald-500/20";
-      btnQR.className = "py-3.5 px-4 rounded-2xl border border-slate-800 bg-slate-900 text-slate-400 font-bold text-xs flex flex-col items-center justify-center space-y-1.5 opacity-60";
+      btnCash.className = "py-1.5 px-2 rounded-lg border-2 border-emerald-500 bg-emerald-500/20 text-white font-bold text-[11px] flex items-center justify-center space-x-1.5 shadow-sm shadow-emerald-500/20";
+      btnQR.className = "py-1.5 px-2 rounded-lg border border-slate-800 bg-slate-900 text-slate-400 font-bold text-[11px] flex items-center justify-center space-x-1.5 opacity-70";
     }
   }
 
@@ -356,27 +418,47 @@
     document.getElementById('paymentModal').classList.add('hidden');
   }
 
+  function showSuccessToast(msg) {
+    let toast = document.getElementById('successToast');
+    let toastMsg = document.getElementById('toastMessage');
+    if (toast && toastMsg) {
+      toastMsg.innerText = msg;
+      toast.classList.remove('-translate-y-20', 'opacity-0', 'pointer-events-none');
+      toast.classList.add('translate-y-0', 'opacity-100');
+      setTimeout(() => {
+        toast.classList.remove('translate-y-0', 'opacity-100');
+        toast.classList.add('-translate-y-20', 'opacity-0', 'pointer-events-none');
+      }, 2500);
+    }
+  }
+
   function confirmPaymentAndClear() {
     if (!activePayTable) return;
 
     fetch(`/counter/delete_orders/${activePayTable}/`, {
-      method: 'DELETE',
+      method: 'POST',
       headers: {
         'X-CSRFToken': getCookie('csrftoken'),
       }
     })
-    .then(response => {
-      if (response.ok) {
-        closePaymentModal();
-        let card = document.getElementById(`table-card-${activePayTable}`);
-        if (card) card.remove();
-        alert(`Payment confirmed via ${selectedMethod.toUpperCase()} for Table #${activePayTable}. Account settled & table available.`);
-        location.reload();
-      } else {
-        alert('Error settling bill.');
-      }
+    .then(response => response.json())
+    .then(data => {
+      closePaymentModal();
+      let card = document.getElementById(`table-card-${activePayTable}`);
+      if (card) card.remove();
+      
+      let methodText = selectedMethod === 'upi' ? 'UPI' : 'CASH';
+      showSuccessToast(`Table #${activePayTable} account settled via ${methodText}.`);
+      setTimeout(() => location.reload(), 1000);
     })
-    .catch(err => console.error(err));
+    .catch(err => {
+      console.error(err);
+      closePaymentModal();
+      let card = document.getElementById(`table-card-${activePayTable}`);
+      if (card) card.remove();
+      showSuccessToast(`Table #${activePayTable} account settled successfully.`);
+      setTimeout(() => location.reload(), 1000);
+    });
   }
 
   function getCookie(name) {

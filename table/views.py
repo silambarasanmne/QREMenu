@@ -37,20 +37,38 @@ def  booking(request):
 def contact(request):
     return render(request ,'contact.html')
 
+def get_clean_table_number(request, fallback='1'):
+    raw = request.session.get('table_number') or request.GET.get('table_number') or request.POST.get('table_number') or fallback
+    digits = ''.join(filter(str.isdigit, str(raw)))
+    clean_num = int(digits) if digits else 1
+    request.session['table_number'] = str(clean_num)
+    return clean_num
+
 def bill(request):
-    table_number = request.session.get('table_number')
-    submitted_items = SubmittedItem.objects.filter(tableNumber=table_number) if table_number else []
-    subtotal = sum(item.total_price for item in submitted_items) if submitted_items else 0
+    table_number = get_clean_table_number(request)
+    submitted_items = SubmittedItem.objects.filter(tableNumber=table_number)
+    subtotal = sum(item.total_price for item in submitted_items)
     return render(request, 'bill.html', {
         'table_number': table_number,
         'orders': submitted_items,
         'subtotal': subtotal
     })
 
-def submit_order(request):
-    not_submitted_items = NotSubmittedItem.objects.all()
-    total_bill = 0
+from django.db.models import Max
 
+def submit_order(request):
+    table_number = get_clean_table_number(request)
+    not_submitted_items = NotSubmittedItem.objects.filter(tableNumber=table_number)
+
+    # Determine order round for this table session
+    existing_items = SubmittedItem.objects.filter(tableNumber=table_number)
+    if existing_items.exists():
+        max_round = existing_items.aggregate(m=Max('order_round'))['m'] or 1
+        current_round = max_round + 1
+    else:
+        current_round = 1
+
+    total_bill = 0
     for item in not_submitted_items:
         total_price = item.price * item.quantity
         SubmittedItem.objects.create(
@@ -60,75 +78,160 @@ def submit_order(request):
             image=item.image,
             quantity=item.quantity,
             total_price=total_price,
-            tableNumber = item.tableNumber,
-            status='pending'
-
+            tableNumber=table_number,
+            status='pending',
+            order_round=current_round
         )
         total_bill += total_price
-    table_number=request.session.get('table_number')
-    print(f"Table number from session: {table_number}")
-    NotSubmittedItem.objects.all().delete()  # Clear NotSubmitted items
-    # not_submitted_items = NotSubmittedItem.objects.all()  # Fetch all the selected items
-    submitted_items = SubmittedItem.objects.filter(tableNumber=table_number)
-    # print(submitted_items)
-    # return render(request, 'order.html', {'total_bill': total_bill})
 
-    return render(request, 'order.html', {'not_submitted_items': not_submitted_items  ,'submitted_items':submitted_items ,  'total_bill': total_bill})
-
-
-
+    not_submitted_items.delete()
+    return redirect('order')
 
 from django.http import JsonResponse
 from .models import NotSubmittedItem, FoodItem
+import json
+
+@csrf_exempt
+def sync_cart_api(request):
+    if request.method == 'POST':
+        try:
+            data = json.loads(request.body)
+        except Exception:
+            data = {}
+        cart = data.get('cart', {})
+        table_num = get_clean_table_number(request, data.get('table_number', '1'))
+
+        # Replace pending unsubmitted items for this table with active localCart state
+        NotSubmittedItem.objects.filter(tableNumber=table_num).delete()
+
+        for item_id, item in cart.items():
+            try:
+                food_item = FoodItem.objects.get(id=int(item_id))
+                NotSubmittedItem.objects.create(
+                    food_item=food_item,
+                    name=item.get('name', food_item.name),
+                    price=float(item.get('price', food_item.price)),
+                    quantity=int(item.get('qty', 1)),
+                    image=item.get('image', ''),
+                    tableNumber=table_num
+                )
+            except Exception:
+                continue
+
+        return JsonResponse({'status': 'success', 'table_number': table_num, 'count': len(cart)})
+    return JsonResponse({'status': 'failed'}, status=400)
 
 def add_not_submitted_item(request):
     if request.method == "POST":
-        food_item_id = request.POST.get('item_id')  # Use 'food_item' as ForeignKey to FoodItem
+        food_item_id = request.POST.get('item_id')
         name = request.POST.get('name')
         price = request.POST.get('price')
-        quantity = int(request.POST.get('quantity'))
+        quantity = int(request.POST.get('quantity', 1))
         image_url = request.POST.get('image_url')
-        table_number = request.POST.get('table_number')
-        if not table_number:
-            # Handle missing table number
-            return HttpResponse("Table number is required.", status=400)
+        table_number = get_clean_table_number(request, request.POST.get('table_number', '1'))
 
-        # Fetch the FoodItem instance
         try:
             food_item = FoodItem.objects.get(id=food_item_id)
         except FoodItem.DoesNotExist:
             return JsonResponse({'success': False, 'message': 'Food item not found'}, status=404)
 
-        # Check if the item is already in the not submitted list
         item, created = NotSubmittedItem.objects.get_or_create(
-            food_item=food_item,  # Using ForeignKey to FoodItem
+            food_item=food_item,
+            tableNumber=table_number,
             defaults={
                 'name': name,
                 'price': price,
                 'quantity': quantity,
-                'image': image_url,  # Assuming you handle image uploads elsewhere
-                'tableNumber': table_number
+                'image': image_url,
             }
         )
         if not created:
-            # If the item already exists, update the quantity
             item.quantity += quantity
             item.save()
         return JsonResponse({'success': True})
     return JsonResponse({'success': False}, status=400)
 
-
-
 def order(request):
-    table_number = request.session.get('table_number')
-    not_submitted_items = NotSubmittedItem.objects.all()
-    submitted_items = SubmittedItem.objects.filter(tableNumber=table_number) if table_number else []
-    total_bill = sum(item.price * item.quantity for item in not_submitted_items)
+    table_number = get_clean_table_number(request)
+    not_submitted_items = NotSubmittedItem.objects.filter(tableNumber=table_number)
+    submitted_items = SubmittedItem.objects.filter(tableNumber=table_number).order_by('-id')
+
+    total_bill = float(sum(item.price * item.quantity for item in not_submitted_items) or 0)
+    submitted_total = float(sum(item.total_price for item in submitted_items) or 0)
+    gst_tax = submitted_total * 0.05
+    grand_total = submitted_total + gst_tax
+
     return render(request, 'order.html', {
         'table_number': table_number,
         'not_submitted_items': not_submitted_items,
         'submitted_items': submitted_items,
-        'total_bill': total_bill
+        'total_bill': total_bill,
+        'submitted_total': submitted_total,
+        'gst_tax': gst_tax,
+        'grand_total': grand_total,
+    })
+
+def order_status_api(request):
+    table_number = request.session.get('table_number') or request.GET.get('table_number')
+    if not table_number:
+        return JsonResponse({'status': 'no_session', 'table_number': None, 'submitted_count': 0})
+
+    submitted_items = SubmittedItem.objects.filter(tableNumber=table_number).order_by('id')
+    not_submitted_items = NotSubmittedItem.objects.filter(tableNumber=table_number)
+
+    items_data = []
+    statuses = set()
+    total_amount = 0.0
+
+    for item in submitted_items:
+        total_amount += float(item.total_price)
+        statuses.add(item.status)
+        items_data.append({
+            'id': item.id,
+            'name': item.name,
+            'quantity': item.quantity,
+            'price': float(item.price),
+            'total_price': float(item.total_price),
+            'status': item.status,
+            'status_display': item.get_status_display()
+        })
+
+    # Timeline progress mapping:
+    # 0 = No submitted order yet
+    # 1 = Step 1: Preparing your food (pending / confirmed)
+    # 2 = Step 2: Food ready (ready)
+    # 3 = Step 3: Served & Billing (served)
+    if not submitted_items.exists():
+        current_step = 0
+        is_served = False
+        is_settled = True
+    elif all(s == 'served' for s in statuses):
+        current_step = 3
+        is_served = True
+        is_settled = False
+    elif any(s == 'ready' for s in statuses):
+        current_step = 2
+        is_served = False
+        is_settled = False
+    else:
+        current_step = 1
+        is_served = False
+        is_settled = False
+
+    gst_tax = total_amount * 0.05
+    grand_total = total_amount + gst_tax
+
+    return JsonResponse({
+        'table_number': table_number,
+        'not_submitted_count': not_submitted_items.count(),
+        'submitted_count': submitted_items.count(),
+        'submitted_items': items_data,
+        'current_step': current_step,
+        'is_served': is_served,
+        'is_settled': is_settled,
+        'subtotal': round(total_amount, 2),
+        'gst_tax': round(gst_tax, 2),
+        'grand_total': round(grand_total, 2),
     })
 
 

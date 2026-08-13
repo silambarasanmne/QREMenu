@@ -53,18 +53,17 @@ def mark_served(request, table_number):
         return redirect('counter_home')
 
 def counter_home(request):
-    active_items = SubmittedItem.objects.all().order_by('tableNumber')
+    active_items = SubmittedItem.objects.filter(status__in=['pending', 'confirmed', 'ready', 'served']).order_by('tableNumber', 'order_round', 'id')
 
-    # Group orders by table number and aggregate item quantities
     orders_by_table = {}
     table_totals = {}
-
     ready_orders_by_table = {}
+    table_rounds_info = {}
 
     # Table Status Grid (Tables 1-15)
     tables_status = {}
     for t in range(1, 16):
-        tables_status[t] = 'available'  # Default green
+        tables_status[t] = 'available'
 
     for order in active_items:
         t_num = order.tableNumber
@@ -73,26 +72,41 @@ def counter_home(request):
         if order.status == 'ready':
             tables_status[t_num] = 'ready_to_serve'
 
-        if order.status in ['confirmed', 'ready', 'served']:
-            if t_num not in orders_by_table:
-                orders_by_table[t_num] = {}
-                table_totals[t_num] = 0
+        if t_num not in orders_by_table:
+            orders_by_table[t_num] = {}
+            table_totals[t_num] = 0
+            table_rounds_info[t_num] = {'max_round': 1, 'has_addons': False, 'rounds': {}}
 
-            item_name = order.name
-            item_quantity = order.quantity
-            item_price = order.price
-            total_item_price = item_quantity * item_price
+        round_num = getattr(order, 'order_round', 1) or 1
+        if round_num > table_rounds_info[t_num]['max_round']:
+            table_rounds_info[t_num]['max_round'] = round_num
+            table_rounds_info[t_num]['has_addons'] = True
 
-            if item_name in orders_by_table[t_num]:
-                orders_by_table[t_num][item_name]['quantity'] += item_quantity
-                orders_by_table[t_num][item_name]['total_price'] += total_item_price
-            else:
-                orders_by_table[t_num][item_name] = {
-                    'quantity': item_quantity,
-                    'price': item_price,
-                    'total_price': total_item_price
-                }
-            table_totals[t_num] += total_item_price
+        if round_num not in table_rounds_info[t_num]['rounds']:
+            table_rounds_info[t_num]['rounds'][round_num] = []
+
+        total_item_price = order.quantity * order.price
+        table_rounds_info[t_num]['rounds'][round_num].append({
+            'name': order.name,
+            'quantity': order.quantity,
+            'price': order.price,
+            'total_price': total_item_price,
+            'status': order.status,
+            'status_display': order.get_status_display(),
+            'round': round_num
+        })
+
+        item_name = order.name
+        if item_name in orders_by_table[t_num]:
+            orders_by_table[t_num][item_name]['quantity'] += order.quantity
+            orders_by_table[t_num][item_name]['total_price'] += total_item_price
+        else:
+            orders_by_table[t_num][item_name] = {
+                'quantity': order.quantity,
+                'price': order.price,
+                'total_price': total_item_price
+            }
+        table_totals[t_num] += total_item_price
 
         if order.status == 'ready':
             if t_num not in ready_orders_by_table:
@@ -104,6 +118,7 @@ def counter_home(request):
         'table_totals': table_totals,
         'ready_orders': ready_orders_by_table,
         'tables_status': tables_status,
+        'table_rounds_info': table_rounds_info,
     }
 
     return render(request, 'counter/counter_home.html', context)
@@ -113,17 +128,8 @@ def counter_home(request):
 
 
 def login_view(request):
-    if request.method=='POST':
-        username=request.POST['username']
-        password=request.POST['password']
-        user = authenticate(request,username=username,password=password)
-        if user is not None:
-            login(request,user)
-            return redirect('counter_home')
-        else:
-            messages.error(request,'Invalid user or password..')
-            return render(request,'counter/login.html')
-    return render(request,"counter/login.html")
+    from emenu.views import staff_login_view
+    return staff_login_view(request)
 
 def logout_view(request):
     logout(request)
@@ -256,16 +262,14 @@ def generate_bill_view(request, table_number):
     }
     return render(request, 'counter/bill_view.html', context)
 
-from django.views.decorators.http import require_http_methods
+from django.views.decorators.csrf import csrf_exempt
 
-
-@require_http_methods(["DELETE"])
+@csrf_exempt
 def delete_table_orders(request, table_number):
-    # Get all confirmed items for the specific table and delete them
-    confirmed_items = SubmittedItem.objects.filter(tableNumber=table_number, status='confirmed')
-    
-    if confirmed_items.exists():
-        confirmed_items.delete()  # Delete all items for this table
-        return JsonResponse({'message': 'Orders deleted successfully'}, status=200)
-    else:
-        return JsonResponse({'error': 'No orders found for this table'}, status=404)
+    items = SubmittedItem.objects.filter(tableNumber=table_number)
+    count = items.count()
+    items.delete()
+    return JsonResponse({
+        'status': 'success',
+        'message': f'Table #{table_number} payment settled successfully! ({count} items processed)'
+    }, status=200)

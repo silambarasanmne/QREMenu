@@ -13,16 +13,27 @@ def qr_menu_access(request, restaurant_id='R001', table_number=12):
     return redirect('table_home')
 
 def staff_login_view(request):
+    next_url = request.GET.get('next') or request.POST.get('next')
     if request.method == 'POST':
         username = request.POST.get('username')
         password = request.POST.get('password')
         user = authenticate(request, username=username, password=password)
         if user is not None:
             login(request, user)
+            default_role = 'SUPER_ADMIN' if user.is_superuser else 'WAITER'
             profile, _ = UserProfile.objects.get_or_create(
                 user=user,
-                defaults={'role': 'WAITER', 'restaurant_id': 'R001'}
+                defaults={'role': default_role, 'restaurant_id': 'R001'}
             )
+            if user.is_superuser and profile.role != 'SUPER_ADMIN':
+                profile.role = 'SUPER_ADMIN'
+                profile.save()
+
+            # Honor next redirect URL if present and safe
+            if next_url and next_url.startswith('/') and not next_url.startswith('//'):
+                return redirect(next_url)
+
+            # Role-based fallback redirection
             if profile.role == 'SUPER_ADMIN' or user.is_superuser:
                 return redirect('/super-admin/')
             elif profile.role == 'KITCHEN':
@@ -35,11 +46,12 @@ def staff_login_view(request):
                 return redirect('/counter/')
         else:
             messages.error(request, 'Invalid staff credentials.')
-    return render(request, 'counter/login.html')
+    return render(request, 'counter/login.html', {'next': next_url})
 
 from table.models import Restaurant
 from django.db.models import Sum
 
+@login_required(login_url='/login/')
 def super_admin_view(request):
     restaurants = Restaurant.objects.all().order_by('-created_at')
     total_orders = SubmittedItem.objects.count()
@@ -150,7 +162,7 @@ def onboard_restaurant_view(request):
             )
 
         messages.success(request, f"Restaurant '{name}' [{rest_id}] onboarded successfully! Provisioned Admin ({admin_uname}), Kitchen ({kitchen_uname}), and Waiter ({waiter_uname}) accounts.")
-        return redirect('super_admin')
+        return redirect('restaurant_qr_sheet', restaurant_id=rest_id)
 
 @login_required(login_url='/login/')
 def toggle_restaurant_active_view(request, restaurant_id):

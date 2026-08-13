@@ -50,9 +50,13 @@
           </div>
         </div>
 
-        {% if orders.pending %}
+        {% if orders.has_addons and orders.pending %}
+        <span class="px-3 py-1 rounded-full bg-rose-500/20 text-rose-300 border border-rose-500/40 text-xs font-extrabold uppercase tracking-wider animate-pulse flex items-center">
+          <i class="fa-solid fa-fire mr-1 text-rose-400"></i> ADD-ON R#{{ orders.max_round }}
+        </span>
+        {% elif orders.pending %}
         <span class="px-3 py-1 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/40 text-xs font-extrabold uppercase tracking-wider animate-pulse">
-          🟡 NEW ORDER
+          🟡 NEW TICKET
         </span>
         {% else %}
         <span class="px-3 py-1 rounded-full bg-indigo-500/20 text-indigo-300 border border-indigo-500/40 text-xs font-extrabold uppercase tracking-wider">

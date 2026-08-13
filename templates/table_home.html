@@ -104,7 +104,7 @@
           </button>
 
           <!-- Order Status Quick Link -->
-          <a href="{% url 'order' %}" class="relative inline-flex items-center px-3.5 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs sm:text-sm shadow-md shadow-amber-500/20 transition-all active:scale-95">
+          <a href="{% url 'order' %}" onclick="syncCartAndNavigate(event, '{% url 'order' %}')" class="relative inline-flex items-center px-3.5 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs sm:text-sm shadow-md shadow-amber-500/20 transition-all active:scale-95">
             <i class="fa-solid fa-receipt mr-1.5 sm:mr-2"></i>
             <span>My Orders</span>
             <span id="cartCountBadge" class="ml-1.5 px-1.5 py-0.5 rounded-full bg-slate-950 text-amber-400 text-[11px] font-extrabold hidden">0</span>
@@ -317,7 +317,7 @@
             </div>
           </div>
 
-          <a href="{% url 'order' %}" class="w-full py-3.5 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-slate-950 font-bold text-sm rounded-xl shadow-lg shadow-amber-500/25 flex items-center justify-center space-x-2 transition-all active:scale-[0.98]">
+          <a href="{% url 'order' %}" onclick="syncCartAndNavigate(event, '{% url 'order' %}')" class="w-full py-3.5 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-slate-950 font-bold text-sm rounded-xl shadow-lg shadow-amber-500/25 flex items-center justify-center space-x-2 transition-all active:scale-[0.98]">
             <span>Review & Place Order</span>
             <i class="fa-solid fa-arrow-right text-xs"></i>
           </a>
@@ -342,7 +342,7 @@
         </div>
       </div>
 
-      <a href="{% url 'order' %}" class="px-5 py-3 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 text-slate-950 font-extrabold text-xs sm:text-sm rounded-xl shadow-lg shadow-amber-500/30 flex items-center space-x-2 active:scale-95 transition-all">
+      <a href="{% url 'order' %}" onclick="syncCartAndNavigate(event, '{% url 'order' %}')" class="px-5 py-3 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 text-slate-950 font-extrabold text-xs sm:text-sm rounded-xl shadow-lg shadow-amber-500/30 flex items-center space-x-2 active:scale-95 transition-all">
         <span>VIEW CART</span>
         <i class="fa-solid fa-chevron-right text-xs"></i>
       </a>
@@ -479,12 +479,12 @@
         desktopHtml += `
           <div class="flex items-center justify-between p-2.5 bg-slate-900/80 rounded-xl border border-slate-800 text-xs">
             <div class="truncate max-w-[140px]">
-              <p class="font-bold text-white truncate">\${item.name}</p>
-              <p class="text-slate-400">₹\${item.price} × \${item.qty}</p>
+              <p class="font-bold text-white truncate">${item.name}</p>
+              <p class="text-slate-400">₹${item.price} × ${item.qty}</p>
             </div>
             <div class="flex items-center space-x-2">
-              <span class="font-bold text-amber-400">₹\${itemTotal.toFixed(2)}</span>
-              <button onclick="updateCartQty('\${item.id}', -1)" class="text-slate-500 hover:text-rose-400">
+              <span class="font-bold text-amber-400">₹${itemTotal.toFixed(2)}</span>
+              <button onclick="updateCartQty('${item.id}', -1)" class="text-slate-500 hover:text-rose-400">
                 <i class="fa-solid fa-circle-minus text-sm"></i>
               </button>
             </div>
@@ -588,9 +588,24 @@
       let container = document.getElementById('toastContainer');
       let toast = document.createElement('div');
       toast.className = "glass-panel px-4 py-3 rounded-2xl shadow-xl border border-amber-500/30 text-xs font-bold text-white flex items-center space-x-2 animate-bounce pointer-events-auto";
-      toast.innerHTML = `<i class="fa-solid fa-circle-check text-amber-400"></i> <span>\${message}</span>`;
+      toast.innerHTML = `<i class="fa-solid fa-circle-check text-amber-400"></i> <span>${message}</span>`;
       container.appendChild(toast);
       setTimeout(() => { toast.remove(); }, 3000);
+    }
+
+    function syncCartAndNavigate(e, targetUrl) {
+      if (e) e.preventDefault();
+      let tableNum = localStorage.getItem('table_number') || '1';
+      fetch("{% url 'sync_cart_api' %}", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "X-CSRFToken": getCookie('csrftoken')
+        },
+        body: JSON.stringify({ cart: localCart, table_number: tableNum })
+      })
+      .then(() => { window.location.href = targetUrl; })
+      .catch(() => { window.location.href = targetUrl; });
     }
 
     function getCookie(name) {

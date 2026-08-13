@@ -24,7 +24,7 @@ urlpatterns = [
     # path('generate_qr/', views.generate_qr, name='generate_qr'),
     # path('auto_submit/<int:item_id>/', views.auto_submit_item, name='auto_submit_item'),
     path('submit_item/<int:item_id>/', views.submit_item, name='submit_item'),
-
-
+    path('api/order_status/', views.order_status_api, name='order_status_api'),
+    path('api/sync_cart/', views.sync_cart_api, name='sync_cart_api'),
 ]
 

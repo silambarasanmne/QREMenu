@@ -95,15 +95,23 @@ def kitchen_home(request):
     for order in pending_orders:
         table_number = order.tableNumber
         if table_number not in tables_with_orders:
-            tables_with_orders[table_number] = {'pending': [], 'confirmed': []}
+            tables_with_orders[table_number] = {'pending': [], 'confirmed': [], 'max_round': 1, 'has_addons': False}
         tables_with_orders[table_number]['pending'].append(order)
+        round_num = getattr(order, 'order_round', 1) or 1
+        if round_num > tables_with_orders[table_number]['max_round']:
+            tables_with_orders[table_number]['max_round'] = round_num
+            tables_with_orders[table_number]['has_addons'] = True
 
     # Organize confirmed orders by table_number
     for order in confirmed_orders:
         table_number = order.tableNumber
         if table_number not in tables_with_orders:
-            tables_with_orders[table_number] = {'pending': [], 'confirmed': []}
+            tables_with_orders[table_number] = {'pending': [], 'confirmed': [], 'max_round': 1, 'has_addons': False}
         tables_with_orders[table_number]['confirmed'].append(order)
+        round_num = getattr(order, 'order_round', 1) or 1
+        if round_num > tables_with_orders[table_number]['max_round']:
+            tables_with_orders[table_number]['max_round'] = round_num
+            tables_with_orders[table_number]['has_addons'] = True
 
     # Pass the combined dictionary to the template
     return render(request, 'kitchen/kitchen_home.html', {
