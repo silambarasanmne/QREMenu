@@ -128,12 +128,10 @@ def counter_home(request):
 
 
 def login_view(request):
-    from emenu.views import staff_login_view
-    return staff_login_view(request)
+    return redirect('super_admin')
 
 def logout_view(request):
-    logout(request)
-    return login_view(request)
+    return redirect('super_admin')
 
 
 

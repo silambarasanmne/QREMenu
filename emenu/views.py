@@ -13,45 +13,11 @@ def qr_menu_access(request, restaurant_id='R001', table_number=12):
     return redirect('table_home')
 
 def staff_login_view(request):
-    next_url = request.GET.get('next') or request.POST.get('next')
-    if request.method == 'POST':
-        username = request.POST.get('username')
-        password = request.POST.get('password')
-        user = authenticate(request, username=username, password=password)
-        if user is not None:
-            login(request, user)
-            default_role = 'SUPER_ADMIN' if user.is_superuser else 'WAITER'
-            profile, _ = UserProfile.objects.get_or_create(
-                user=user,
-                defaults={'role': default_role, 'restaurant_id': 'R001'}
-            )
-            if user.is_superuser and profile.role != 'SUPER_ADMIN':
-                profile.role = 'SUPER_ADMIN'
-                profile.save()
-
-            # Honor next redirect URL if present and safe
-            if next_url and next_url.startswith('/') and not next_url.startswith('//'):
-                return redirect(next_url)
-
-            # Role-based fallback redirection
-            if profile.role == 'SUPER_ADMIN' or user.is_superuser:
-                return redirect('/super-admin/')
-            elif profile.role == 'KITCHEN':
-                return redirect('/kitchen/?tab=recent')
-            elif profile.role in ['WAITER', 'STAFF']:
-                return redirect('/counter/')
-            elif profile.role == 'RESTAURANT_ADMIN':
-                return redirect('/admin-menu/')
-            else:
-                return redirect('/counter/')
-        else:
-            messages.error(request, 'Invalid staff credentials.')
-    return render(request, 'counter/login.html', {'next': next_url})
+    return redirect('super_admin')
 
 from table.models import Restaurant
 from django.db.models import Sum
 
-@login_required(login_url='/login/')
 def super_admin_view(request):
     restaurants = Restaurant.objects.all().order_by('-created_at')
     total_orders = SubmittedItem.objects.count()
@@ -164,7 +130,6 @@ def onboard_restaurant_view(request):
         messages.success(request, f"Restaurant '{name}' [{rest_id}] onboarded successfully! Provisioned Admin ({admin_uname}), Kitchen ({kitchen_uname}), and Waiter ({waiter_uname}) accounts.")
         return redirect('restaurant_qr_sheet', restaurant_id=rest_id)
 
-@login_required(login_url='/login/')
 def toggle_restaurant_active_view(request, restaurant_id):
     restaurant = get_object_or_404(Restaurant, restaurant_id=restaurant_id)
     restaurant.is_active = not restaurant.is_active
@@ -173,7 +138,6 @@ def toggle_restaurant_active_view(request, restaurant_id):
     messages.success(request, f"Restaurant '{restaurant.name}' service status changed to {status_str}.")
     return redirect('super_admin')
 
-@login_required(login_url='/login/')
 def delete_restaurant_view(request, restaurant_id):
     restaurant = get_object_or_404(Restaurant, restaurant_id=restaurant_id)
     name = restaurant.name
@@ -181,7 +145,6 @@ def delete_restaurant_view(request, restaurant_id):
     messages.success(request, f"Restaurant '{name}' [{restaurant_id}] and tenant records removed.")
     return redirect('super_admin')
 
-@login_required(login_url='/login/')
 def restaurant_qr_sheet_view(request, restaurant_id):
     restaurant = get_object_or_404(Restaurant, restaurant_id=restaurant_id)
     tables = list(range(1, restaurant.table_count + 1))
@@ -207,13 +170,15 @@ def restaurant_qr_sheet_view(request, restaurant_id):
     }
     return render(request, 'qr_sheet.html', context)
 
-from django.contrib.auth.decorators import login_required
 from django.http import JsonResponse
 
-@login_required(login_url='/login/')
 def menu_management_view(request):
-    profile, _ = UserProfile.objects.get_or_create(user=request.user, defaults={'role': 'RESTAURANT_ADMIN', 'restaurant_id': 'R001'})
-    rest_id = profile.restaurant_id
+    rest_id = request.GET.get('restaurant_id') or 'R001'
+    if request.user.is_authenticated:
+        profile, _ = UserProfile.objects.get_or_create(user=request.user, defaults={'role': 'RESTAURANT_ADMIN', 'restaurant_id': rest_id})
+        rest_id = profile.restaurant_id
+    else:
+        profile = None
     
     categories = Category.objects.filter(restaurant_id=rest_id)
     food_items = FoodItem.objects.filter(restaurant_id=rest_id).order_by('category', 'display_order', 'id')
@@ -226,11 +191,11 @@ def menu_management_view(request):
     }
     return render(request, 'admin_menu.html', context)
 
-@login_required(login_url='/login/')
 def add_food_item_view(request):
     if request.method == 'POST':
-        profile = getattr(request.user, 'profile', None)
-        rest_id = profile.restaurant_id if profile else 'R001'
+        rest_id = request.POST.get('restaurant_id') or 'R001'
+        if request.user.is_authenticated and hasattr(request.user, 'profile'):
+            rest_id = request.user.profile.restaurant_id
 
         category_id = request.POST.get('category_id')
         new_category_name = request.POST.get('new_category_name', '').strip()
@@ -257,11 +222,9 @@ def add_food_item_view(request):
         messages.success(request, f"Dish '{name}' added successfully to E-Menu.")
         return redirect('menu_management')
 
-@login_required(login_url='/login/')
 def edit_food_item_view(request, item_id):
-    profile = getattr(request.user, 'profile', None)
-    rest_id = profile.restaurant_id if profile else 'R001'
-    item = get_object_or_404(FoodItem, id=item_id, restaurant_id=rest_id)
+    rest_id = request.POST.get('restaurant_id') or request.GET.get('restaurant_id') or 'R001'
+    item = get_object_or_404(FoodItem, id=item_id)
 
     if request.method == 'POST':
         item.name = request.POST.get('name', item.name)
@@ -271,7 +234,7 @@ def edit_food_item_view(request, item_id):
         
         category_id = request.POST.get('category_id')
         if category_id:
-            item.category = get_object_or_404(Category, id=category_id, restaurant_id=rest_id)
+            item.category = get_object_or_404(Category, id=category_id)
 
         if request.FILES.get('image'):
             item.image = request.FILES.get('image')
@@ -280,21 +243,15 @@ def edit_food_item_view(request, item_id):
         messages.success(request, f"Dish '{item.name}' updated successfully.")
         return redirect('menu_management')
 
-@login_required(login_url='/login/')
 def delete_food_item_view(request, item_id):
-    profile = getattr(request.user, 'profile', None)
-    rest_id = profile.restaurant_id if profile else 'R001'
-    item = get_object_or_404(FoodItem, id=item_id, restaurant_id=rest_id)
+    item = get_object_or_404(FoodItem, id=item_id)
     name = item.name
     item.delete()
     messages.success(request, f"Dish '{name}' removed from menu.")
     return redirect('menu_management')
 
-@login_required(login_url='/login/')
 def toggle_food_availability_view(request, item_id):
-    profile = getattr(request.user, 'profile', None)
-    rest_id = profile.restaurant_id if profile else 'R001'
-    item = get_object_or_404(FoodItem, id=item_id, restaurant_id=rest_id)
+    item = get_object_or_404(FoodItem, id=item_id)
     item.is_available = not item.is_available
     item.save()
     return JsonResponse({'success': True, 'is_available': item.is_available, 'item_name': item.name})

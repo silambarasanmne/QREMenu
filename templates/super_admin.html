@@ -52,16 +52,25 @@
         </div>
       </div>
 
-      <!-- Action Buttons -->
-      <div class="flex items-center space-x-3">
-        <button onclick="openOnboardModal()" class="px-4 py-2 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 text-slate-950 font-extrabold text-xs sm:text-sm shadow-md shadow-amber-500/20 flex items-center space-x-2 transition-all active:scale-95">
-          <i class="fa-solid fa-plus text-xs"></i>
-          <span>+ Onboard New Restaurant</span>
-        </button>
-
-        <a href="{% url 'logout_view' %}" class="w-9 h-9 rounded-xl bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border border-rose-500/30 flex items-center justify-center transition-colors">
-          <i class="fa-solid fa-right-from-bracket text-xs"></i>
+      <!-- Platform Direct Links & Onboard Button -->
+      <div class="flex items-center space-x-2 sm:space-x-3 overflow-x-auto no-scrollbar">
+        <a href="{% url 'menu_management' %}" class="px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-amber-400 border border-slate-700 text-xs font-bold whitespace-nowrap transition-colors">
+          <i class="fa-solid fa-utensils mr-1"></i> Menu Admin
         </a>
+        <a href="{% url 'counter_home' %}" class="px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-amber-400 border border-slate-700 text-xs font-bold whitespace-nowrap transition-colors">
+          <i class="fa-solid fa-cash-register mr-1"></i> Cashier Desk
+        </a>
+        <a href="{% url 'kitchen_home' %}" class="px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-amber-400 border border-slate-700 text-xs font-bold whitespace-nowrap transition-colors">
+          <i class="fa-solid fa-fire mr-1"></i> Kitchen KDS
+        </a>
+        <a href="{% url 'table_home' %}" class="px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-amber-400 border border-slate-700 text-xs font-bold whitespace-nowrap transition-colors">
+          <i class="fa-solid fa-mobile-screen mr-1"></i> Customer Menu
+        </a>
+
+        <button onclick="openOnboardModal()" class="px-3.5 py-1.5 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 text-slate-950 font-extrabold text-xs sm:text-sm shadow-md shadow-amber-500/20 flex items-center space-x-1.5 whitespace-nowrap transition-all active:scale-95">
+          <i class="fa-solid fa-plus text-xs"></i>
+          <span>Onboard Restaurant</span>
+        </button>
       </div>
 
     </div>
